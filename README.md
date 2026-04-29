@@ -62,5 +62,5 @@ This project was developed for the **Teknologi & Aplikasi Piranti Bergerak (IF52
 This project implements requirements from the [IF5230 Technical Presentation](https://docs.google.com/presentation/d/10Qpt3z3-DASD-9AmADRBD_7AElM_5cLH4yf2HKgl4YY/edit#slide=id.gb8b649eef8_0_411).
 
 <p align="center">
-  Developed with ⚡ and ☕ by <b>Your Name</b>
+  Developed with ⚡ and ☕ by <b>Students don't get Enough Sleep</b>
 </p>
