@@ -1,38 +1,43 @@
 package com.example.kabaddikounter.viewModels
 
 import android.app.Application
-import android.content.Context
-import androidx.lifecycle.LiveData
-import androidx.lifecycle.MutableLiveData
-import androidx.lifecycle.AndroidViewModel
-import androidx.lifecycle.viewModelScope
-import kotlinx.coroutines.launch
-import com.example.kabaddikounter.data.AppDatabase
-import com.example.kabaddikounter.data.MatchRecord
-import com.google.gson.Gson
-import android.widget.Toast
 import android.content.ContentValues
+import android.content.Context
+import android.net.Uri
 import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
+import android.widget.Toast
 import androidx.core.content.edit
+import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.LiveData
+import androidx.lifecycle.MutableLiveData
+import androidx.lifecycle.viewModelScope
+import com.example.kabaddikounter.data.AppDatabase
+import com.example.kabaddikounter.data.MatchRecord
+import com.google.gson.Gson
+import kotlinx.coroutines.launch
 
 
 class ScoreViewModel(application: Application) : AndroidViewModel(application) {
-    private  val database = AppDatabase.getDatabase(application)
-    private  val matchDao = database.matchDao()
+    private val database = AppDatabase.getDatabase(application)
+    private val matchDao = database.matchDao()
 
     val allMatches: LiveData<List<MatchRecord>> = matchDao.getAllMatches()
 
     val teamA = MutableLiveData("Team A")
     val teamB = MutableLiveData("Team B")
-    private  val sharedPreferences = application.getSharedPreferences("theme_prefs", Context.MODE_PRIVATE)
+    private val sharedPreferences =
+        application.getSharedPreferences("theme_prefs", Context.MODE_PRIVATE)
     private val _scoreA = MutableLiveData(0)
     private val _isDarkMode = MutableLiveData(false)
+    private val _openJsonEvent = MutableLiveData<Uri?>()
+
     init {
         val savedTheme = sharedPreferences.getBoolean("theme", false)
         _isDarkMode.value = savedTheme
     }
+
     val isDarkMode: LiveData<Boolean>
         get() = _isDarkMode
     val scoreA: LiveData<Int>
@@ -41,6 +46,9 @@ class ScoreViewModel(application: Application) : AndroidViewModel(application) {
     private val _scoreB = MutableLiveData(0)
     val scoreB: LiveData<Int>
         get() = _scoreB
+
+    val openJsonEvent: LiveData<Uri?>
+        get() = _openJsonEvent
 
     fun incrementScoreA(points: Int = 1) {
         _scoreA.value = _scoreA.value!! + points
@@ -60,12 +68,14 @@ class ScoreViewModel(application: Application) : AndroidViewModel(application) {
         _scoreA.value = 0
         _scoreB.value = 0
     }
-    fun toggleTheme(isDark : Boolean){
-        if(_isDarkMode.value == isDark) return
+
+    fun toggleTheme(isDark: Boolean) {
+        if (_isDarkMode.value == isDark) return
         sharedPreferences.edit { putBoolean("theme", isDark) }
         _isDarkMode.value = isDark
     }
-    fun saveMatchResult(){
+
+    fun saveMatchResult() {
         viewModelScope.launch {
             val newMatch = MatchRecord(
                 teamAName = teamA.value ?: "Team A",
@@ -84,51 +94,61 @@ class ScoreViewModel(application: Application) : AndroidViewModel(application) {
             matchDao.deleteMatch(match)
         }
     }
-    fun downloadHistoryAsJSON(){
+
+    fun downloadHistoryAsJSON() {
         viewModelScope.launch {
             val matches = matchDao.getAllMatchesList()
 
-            if(matches.isEmpty()){
+            if (matches.isEmpty()) {
                 Toast.makeText(getApplication(), "No data to download", Toast.LENGTH_SHORT).show()
                 return@launch
             }
-            val gson = Gson()
-            val jsonString = gson.toJson(matches)
+            val jsonString = Gson().toJson(matches)
             saveJSONToFile(jsonString)
         }
     }
-private fun saveJSONToFile(jsonString: String) {
-    val fileName = "Kabaddi_History_${System.currentTimeMillis()}.json"
-    val context = getApplication<Application>().applicationContext
-    val resolver = context.contentResolver
 
-    val contentValues = ContentValues().apply {
-        put(MediaStore.MediaColumns.DISPLAY_NAME, fileName)
-        put(MediaStore.MediaColumns.MIME_TYPE, "application/json")
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            // FIX: Changed from com.google.ai... to android.os.Environment
-            put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS)
-        }
+    fun onJsonOpened() {
+        _openJsonEvent.value = null
     }
 
-    // MediaStore.Downloads.EXTERNAL_CONTENT_URI requires API 29+
-    val collection = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-        MediaStore.Downloads.EXTERNAL_CONTENT_URI
-    } else {
-        MediaStore.Files.getContentUri("external")
-    }
+    private fun saveJSONToFile(jsonString: String) {
+        val fileName = "Kabaddi_History_${System.currentTimeMillis()}.json"
+        val context = getApplication<Application>().applicationContext
+        val resolver = context.contentResolver
 
-    val uri = resolver.insert(collection, contentValues)
-
-    uri?.let { fileUri ->
-        try {
-            resolver.openOutputStream(fileUri)?.use { outputStream ->
-                outputStream.write(jsonString.toByteArray())
+        val contentValues = ContentValues().apply {
+            put(MediaStore.MediaColumns.DISPLAY_NAME, fileName)
+            put(MediaStore.MediaColumns.MIME_TYPE, "application/json")
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS)
             }
-            Toast.makeText(context, "History downloaded to Downloads folder", Toast.LENGTH_SHORT).show()
-        } catch (e: Exception) {
-            e.printStackTrace()
+        }
+
+        val collection = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            MediaStore.Downloads.EXTERNAL_CONTENT_URI
+        } else {
+            MediaStore.Files.getContentUri("external")
+        }
+
+        val uri = resolver.insert(collection, contentValues)
+
+        uri?.let { fileUri ->
+            try {
+                resolver.openOutputStream(fileUri)?.use { outputStream ->
+                    outputStream.write(jsonString.toByteArray())
+                }
+                Toast.makeText(
+                    context,
+                    "History downloaded to Downloads folder",
+                    Toast.LENGTH_SHORT
+                ).show()
+                _openJsonEvent.postValue(fileUri)
+            } catch (e: Exception) {
+                resolver.delete(fileUri, null, null)
+                Toast.makeText(context, "Failed to save history", Toast.LENGTH_SHORT).show()
+                e.printStackTrace()
+            }
         }
     }
-}
 }

@@ -1,8 +1,8 @@
 package com.example.kabaddikounter
 
-import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import androidx.activity.viewModels
+import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.databinding.DataBindingUtil
 import com.example.kabaddikounter.databinding.ActivityMainBinding
@@ -21,16 +21,25 @@ class MainActivity : AppCompatActivity() {
         binding.lifecycleOwner = this
 
         registerToggleTheme()
-
+        registerJsonViewer()
     }
-    fun registerToggleTheme(){
-        viewModel.isDarkMode.observe(this){isDark ->
-            if(isDark){
+
+    private fun registerToggleTheme() {
+        viewModel.isDarkMode.observe(this) { isDark ->
+            if (isDark) {
                 AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_YES)
-            }else{
+            } else {
                 AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_NO)
             }
         }
     }
 
+    private fun registerJsonViewer() {
+        viewModel.openJsonEvent.observe(this) { uri ->
+            if (uri == null) return@observe
+            JsonViewerDialogFragment.newInstance(uri)
+                .show(supportFragmentManager, JsonViewerDialogFragment.TAG)
+            viewModel.onJsonOpened()
+        }
+    }
 }
