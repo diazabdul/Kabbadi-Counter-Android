@@ -7,37 +7,39 @@ import android.view.ViewGroup
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
 import androidx.recyclerview.widget.LinearLayoutManager
-import androidx.recyclerview.widget.RecyclerView
+import com.example.kabaddikounter.databinding.FragmentHistoryBinding
 import com.example.kabaddikounter.viewModels.ScoreViewModel
 
 class HistoryFragment : Fragment() {
+    private var _binding: FragmentHistoryBinding? = null
+    private val binding get() = _binding!!
     private lateinit var viewModel: ScoreViewModel
 
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
         savedInstanceState: Bundle?
-    ): View? {
-        val view = inflater.inflate(R.layout.fragment_history, container, false)
+    ): View {
+        _binding = FragmentHistoryBinding.inflate(inflater, container, false)
+        binding.lifecycleOwner = viewLifecycleOwner
 
-        // FIX: R.id.historyRecyclerView is a RecyclerView in fragment_history.xml
-        val recyclerView = view.findViewById<RecyclerView>(R.id.historyRecyclerView)
-        val adapter = MatchAdapter { match ->
-            viewModel.deleteMatch(match)
-        }
+        viewModel = ViewModelProvider(requireActivity())[ScoreViewModel::class.java]
 
-        recyclerView.adapter = adapter
-        recyclerView.layoutManager = LinearLayoutManager(context)
-
-        // Use the activity-scoped ViewModel so it's shared with MainActivity
-        viewModel = ViewModelProvider(requireActivity()).get(ScoreViewModel::class.java)
+        val adapter = MatchAdapter { match -> viewModel.deleteMatch(match) }
+        binding.historyRecyclerView.adapter = adapter
+        binding.historyRecyclerView.layoutManager = LinearLayoutManager(context)
 
         viewModel.allMatches.observe(viewLifecycleOwner) { matches ->
-            adapter.submitList(matches){
-            recyclerView.scrollToPosition(0)
+            adapter.submitList(matches) {
+                binding.historyRecyclerView.scrollToPosition(0)
             }
         }
 
-        return view
+        return binding.root
+    }
+
+    override fun onDestroyView() {
+        super.onDestroyView()
+        _binding = null
     }
 }

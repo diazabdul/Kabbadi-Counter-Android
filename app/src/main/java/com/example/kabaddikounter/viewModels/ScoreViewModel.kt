@@ -10,12 +10,12 @@ import kotlinx.coroutines.launch
 import com.example.kabaddikounter.data.AppDatabase
 import com.example.kabaddikounter.data.MatchRecord
 import com.google.gson.Gson
-import java.io.File
 import android.widget.Toast
 import android.content.ContentValues
 import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
+import androidx.core.content.edit
 
 
 class ScoreViewModel(application: Application) : AndroidViewModel(application) {
@@ -24,13 +24,11 @@ class ScoreViewModel(application: Application) : AndroidViewModel(application) {
 
     val allMatches: LiveData<List<MatchRecord>> = matchDao.getAllMatches()
 
-    val textExample =  MutableLiveData<String>("test")
-    val versusName = MutableLiveData<String>()
-    val teamA = MutableLiveData<String>("Team A")
-    val teamB = MutableLiveData<String>("Team B")
+    val teamA = MutableLiveData("Team A")
+    val teamB = MutableLiveData("Team B")
     private  val sharedPreferences = application.getSharedPreferences("theme_prefs", Context.MODE_PRIVATE)
-    private val _scoreA = MutableLiveData<Int>(0)
-    private val _isDarkMode = MutableLiveData<Boolean>(false)
+    private val _scoreA = MutableLiveData(0)
+    private val _isDarkMode = MutableLiveData(false)
     init {
         val savedTheme = sharedPreferences.getBoolean("theme", false)
         _isDarkMode.value = savedTheme
@@ -40,7 +38,7 @@ class ScoreViewModel(application: Application) : AndroidViewModel(application) {
     val scoreA: LiveData<Int>
         get() = _scoreA
 
-    private val _scoreB = MutableLiveData<Int>(0)
+    private val _scoreB = MutableLiveData(0)
     val scoreB: LiveData<Int>
         get() = _scoreB
 
@@ -53,14 +51,18 @@ class ScoreViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun reset() {
-        _scoreA.value = 0;
-        _scoreB.value = 0;
+        resetScores()
         teamA.value = "Team A"
         teamB.value = "Team B"
     }
+
+    private fun resetScores() {
+        _scoreA.value = 0
+        _scoreB.value = 0
+    }
     fun toggleTheme(isDark : Boolean){
         if(_isDarkMode.value == isDark) return
-        sharedPreferences.edit().putBoolean("theme", isDark).apply()
+        sharedPreferences.edit { putBoolean("theme", isDark) }
         _isDarkMode.value = isDark
     }
     fun saveMatchResult(){
@@ -73,9 +75,7 @@ class ScoreViewModel(application: Application) : AndroidViewModel(application) {
                 timestamp = System.currentTimeMillis()
             )
             matchDao.insertMatch(newMatch)
-            reset()
-            println(newMatch)
-            println("Data Save")
+            resetScores()
         }
     }
 
@@ -84,7 +84,7 @@ class ScoreViewModel(application: Application) : AndroidViewModel(application) {
             matchDao.deleteMatch(match)
         }
     }
-    fun dowwnloadHistoryAsJSON(){
+    fun downloadHistoryAsJSON(){
         viewModelScope.launch {
             val matches = matchDao.getAllMatchesList()
 

@@ -1,3 +1,11 @@
 <resources>
-    <string name="app_name">Kabaddi Kounter</string>
+  <string name="app_name">Kabaddi Kounter</string>
+  <string name="label_plus_one">+1</string>
+  <string name="label_plus_two">+2</string>
+  <string name="label_reset">Reset</string>
+  <string name="label_save">Save</string>
+  <string name="label_download">Download</string>
+  <string name="label_dark_mode">Dark Mode</string>
+  <string name="label_delete_match">Delete match</string>
+  <string name="score_format">%1$d - %2$d</string>
 </resources>

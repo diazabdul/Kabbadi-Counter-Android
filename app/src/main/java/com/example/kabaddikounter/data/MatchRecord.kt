@@ -1,4 +1,4 @@
-package com.example.kabaddikounter.data // Adjust package name
+package com.example.kabaddikounter.data
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
