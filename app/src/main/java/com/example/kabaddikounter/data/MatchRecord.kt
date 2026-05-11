@@ -11,5 +11,9 @@ data class MatchRecord(
     val teamBName: String,
     val scoreA: Int,
     val scoreB: Int,
+    val status: String = STATUS_LOCAL_DRAFT,
     val timestamp: Long // We store date/time as a Long (milliseconds)
 )
+
+const val STATUS_LOCAL_DRAFT = "LOCAL_DRAFT"
+const val STATUS_LOCAL_FINISHED = "LOCAL_FINISHED"

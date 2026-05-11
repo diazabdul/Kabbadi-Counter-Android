@@ -25,7 +25,10 @@ class HistoryFragment : Fragment() {
 
         viewModel = ViewModelProvider(requireActivity())[ScoreViewModel::class.java]
 
-        val adapter = MatchAdapter { match -> viewModel.deleteMatch(match) }
+        val adapter = MatchAdapter(
+            onDeleteClick = { match -> viewModel.deleteMatch(match) },
+            onLoadClick = { match -> viewModel.loadMatch(match) }
+        )
         binding.historyRecyclerView.adapter = adapter
         binding.historyRecyclerView.layoutManager = LinearLayoutManager(context)
 
