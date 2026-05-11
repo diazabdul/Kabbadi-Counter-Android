@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "770462383065",
+    "project_id": "kabaddi-kounter",
+    "storage_bucket": "kabaddi-kounter.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:770462383065:android:8599bfbbcaf9fdf99a77c8",
+        "android_client_info": {
+          "package_name": "com.example.kabaddikounter"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDEG3yvNqb1ljaTtlYe6jMytKiaeF4Qq38"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
