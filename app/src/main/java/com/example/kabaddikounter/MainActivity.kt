@@ -1,128 +1,147 @@
 package com.example.kabaddikounter
 
-import android.content.SharedPreferences
 import android.net.Uri
 import android.os.Bundle
 import android.widget.Toast
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.activity.viewModels
-import androidx.appcompat.app.AppCompatActivity
-import androidx.appcompat.app.AppCompatDelegate
-import androidx.databinding.DataBindingUtil
-import androidx.preference.PreferenceManager
-import com.example.kabaddikounter.databinding.ActivityMainBinding
-import com.example.kabaddikounter.ui.backend.BackendTestActivity
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontFamily
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
+import com.example.kabaddikounter.ui.backend.BackendTestScreen
+import com.example.kabaddikounter.ui.screens.HomeScreen
+import com.example.kabaddikounter.ui.theme.KabaddiKounterTheme
 import com.example.kabaddikounter.viewModels.ScoreViewModel
+import com.google.gson.GsonBuilder
+import com.google.gson.JsonParser
 
-class MainActivity : AppCompatActivity(), SharedPreferences.OnSharedPreferenceChangeListener {
-
-    private val viewModel: ScoreViewModel by viewModels()
-    private lateinit var binding: ActivityMainBinding
-    private lateinit var preferences: SharedPreferences
-    private var pendingJsonContent: String? = null
-    private var lastAppliedNightMode: Int = AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM
-
-    private val createJsonDocumentLauncher =
-        registerForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
-            writeJsonToUri(uri, pendingJsonContent)
-            pendingJsonContent = null
-        }
-
+class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
-        preferences = PreferenceManager.getDefaultSharedPreferences(this)
-        lastAppliedNightMode = resolveNightMode(preferences)
-        AppCompatDelegate.setDefaultNightMode(lastAppliedNightMode)
-
         super.onCreate(savedInstanceState)
-        binding = DataBindingUtil.setContentView(this, R.layout.activity_main)
-        binding.viewModel = viewModel
-        binding.lifecycleOwner = this
+        setContent { AppRoot() }
+    }
+}
 
-        registerJsonExport()
-        registerOpenSettings()
-        registerOpenBackendTest()
+@Composable
+private fun AppRoot() {
+    val context = LocalContext.current
+    val prefs = remember {
+        context.getSharedPreferences("${context.packageName}_preferences", android.content.Context.MODE_PRIVATE)
+    }
+    var themeMode by remember {
+        mutableStateOf(prefs.getString("pref_theme_mode", "system") ?: "system")
     }
 
-    override fun onStart() {
-        super.onStart()
-        preferences.registerOnSharedPreferenceChangeListener(this)
-    }
-
-    override fun onResume() {
-        super.onResume()
-        val targetMode = resolveNightMode(preferences)
-        if (targetMode != lastAppliedNightMode) {
-            lastAppliedNightMode = targetMode
-            AppCompatDelegate.setDefaultNightMode(targetMode)
-            recreate()
+    KabaddiKounterTheme(
+        darkTheme = when (themeMode) {
+            "dark" -> true
+            "light" -> false
+            else -> isSystemInDarkTheme()
         }
-    }
-
-    override fun onStop() {
-        preferences.unregisterOnSharedPreferenceChangeListener(this)
-        super.onStop()
-    }
-
-    override fun onSharedPreferenceChanged(sharedPreferences: SharedPreferences?, key: String?) {
-        if (key == SettingsFragment.PREF_THEME_MODE) {
-            val targetMode = resolveNightMode(preferences)
-            if (targetMode != lastAppliedNightMode) {
-                lastAppliedNightMode = targetMode
-                AppCompatDelegate.setDefaultNightMode(targetMode)
+    ) {
+        AppNavigation(
+            themeMode = themeMode,
+            onThemeChange = { mode ->
+                themeMode = mode
+                prefs.edit().putString("pref_theme_mode", mode).apply()
             }
-        }
+        )
     }
+}
 
-    private fun resolveNightMode(sharedPreferences: SharedPreferences): Int {
-        return when (sharedPreferences.getString(SettingsFragment.PREF_THEME_MODE, SettingsFragment.THEME_SYSTEM)) {
-            SettingsFragment.THEME_LIGHT -> AppCompatDelegate.MODE_NIGHT_NO
-            SettingsFragment.THEME_DARK -> AppCompatDelegate.MODE_NIGHT_YES
-            else -> AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM
-        }
-    }
+@Composable
+private fun AppNavigation(
+    themeMode: String,
+    onThemeChange: (String) -> Unit
+) {
+    val context = LocalContext.current
+    val navController = rememberNavController()
+    val scoreViewModel: ScoreViewModel = viewModel()
 
-    private fun registerJsonExport() {
-        viewModel.exportJsonEvent.observe(this) { jsonContent ->
-            if (jsonContent == null) return@observe
-            pendingJsonContent = jsonContent
-            val suggestedName = "Kabaddi_History_${System.currentTimeMillis()}.json"
-            createJsonDocumentLauncher.launch(suggestedName)
-            viewModel.consumeExportJsonEvent()
-        }
-    }
+    var pendingJson by remember { mutableStateOf<String?>(null) }
+    var jsonToShow by remember { mutableStateOf<String?>(null) }
 
-    private fun registerOpenSettings() {
-        binding.buttonSettings.setOnClickListener {
-            startActivity(SettingsActivity.newIntent(this))
+    val createDocumentLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("application/json")
+    ) { uri: Uri? ->
+        val json = pendingJson
+        pendingJson = null
+        if (uri == null || json == null) {
+            Toast.makeText(context, "Export canceled", Toast.LENGTH_SHORT).show()
+            return@rememberLauncherForActivityResult
         }
-    }
-
-    private fun registerOpenBackendTest() {
-        binding.buttonBackendTest.setOnClickListener {
-            startActivity(BackendTestActivity.newIntent(this))
-        }
-    }
-
-    private fun writeJsonToUri(uri: Uri?, jsonContent: String?) {
-        if (uri == null) {
-            Toast.makeText(this, "Export canceled", Toast.LENGTH_SHORT).show()
-            return
-        }
-        if (jsonContent.isNullOrBlank()) {
-            Toast.makeText(this, "Failed to export JSON", Toast.LENGTH_SHORT).show()
-            return
-        }
-
         runCatching {
-            contentResolver.openOutputStream(uri)?.use { outputStream ->
-                outputStream.write(jsonContent.toByteArray())
-            } ?: error("Cannot open output stream")
+            context.contentResolver.openOutputStream(uri)
+                ?.use { it.write(json.toByteArray()) }
+                ?: error("Cannot open output stream")
         }.onSuccess {
-            Toast.makeText(this, "History exported", Toast.LENGTH_SHORT).show()
-            JsonViewerDialogFragment.newInstance(uri)
-                .show(supportFragmentManager, JsonViewerDialogFragment.TAG)
+            Toast.makeText(context, "History exported", Toast.LENGTH_SHORT).show()
+            val raw = context.contentResolver.openInputStream(uri)
+                ?.use { stream -> stream.bufferedReader().readText() }
+            jsonToShow = raw?.let { text ->
+                runCatching {
+                    GsonBuilder().setPrettyPrinting().create()
+                        .toJson(JsonParser.parseString(text))
+                }.getOrDefault(text)
+            }
         }.onFailure {
-            Toast.makeText(this, "Failed to export JSON", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, "Failed to export JSON", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    jsonToShow?.let { json ->
+        AlertDialog(
+            onDismissRequest = { jsonToShow = null },
+            title = { Text("Downloaded JSON") },
+            text = {
+                Text(
+                    text = json,
+                    fontFamily = FontFamily.Monospace,
+                    modifier = Modifier.verticalScroll(rememberScrollState())
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = { jsonToShow = null }) { Text("Close") }
+            }
+        )
+    }
+
+    NavHost(navController = navController, startDestination = "main") {
+        composable("main") {
+            HomeScreen(
+                viewModel = scoreViewModel,
+                themeMode = themeMode,
+                onThemeChange = onThemeChange,
+                onNavigateBackend = { navController.navigate("backend") },
+                onExportJson = { json: String ->
+                    pendingJson = json
+                    createDocumentLauncher.launch(
+                        "Kabaddi_History_${System.currentTimeMillis()}.json"
+                    )
+                }
+            )
+        }
+        composable("backend") {
+            BackendTestScreen(
+                onNavigateUp = { navController.popBackStack() }
+            )
         }
     }
 }
