@@ -66,7 +66,7 @@ Contoh response:
 Catatan:
 
 - Panggil ini setelah user memilih match LIVE.
-- Jika token sama subscribe ke match lain, backend otomatis memindahkan subscription.
+- Satu token bisa subscribe ke beberapa match LIVE sekaligus.
 
 Response sukses:
 
@@ -89,6 +89,24 @@ Response sukses:
   }
 }
 ```
+
+### 3.4 Unsubscribe Device dari Match Tertentu
+
+- Method: `DELETE`
+- URL: `/match/{kabaddiMatch}/subscribe`
+- Header: `Content-Type: application/json`
+- Body:
+
+```json
+{
+  "fcm_token": "ANDROID_FCM_TOKEN"
+}
+```
+
+Catatan:
+
+- Unsubscribe hanya menghapus relasi token pada match yang dipilih.
+- Subscription token pada match lain tidak terhapus.
 
 ## 4. Event FCM yang Diterima Android
 
@@ -145,7 +163,10 @@ Android menerima data payload (string values) dari backend.
 3. Trigger dari backend (oleh tim backend/dashboard):
 - `POST /match/{id}/score`
 - Android harus menerima payload `SCORE_UPDATED`.
-4. Trigger stop:
+4. Unsubscribe satu match:
+- `DELETE /match/{id}/subscribe`
+- Token harus berhenti menerima event dari match tersebut, tapi tetap menerima dari match lain yang masih di-subscribe.
+5. Trigger stop:
 - `POST /match/{id}/stop`
 - Android harus menerima payload `MATCH_ENDED`.
 
