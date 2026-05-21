@@ -50,175 +50,178 @@ import com.example.kabaddikounter.viewModels.SubscribeState
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BackendTestScreen(
-    viewModel: BackendTestViewModel = viewModel(),
-    onNavigateUp: () -> Unit
+  viewModel: BackendTestViewModel = viewModel(),
+  onNavigateUp: () -> Unit
 ) {
-    val context = LocalContext.current
-    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    val subscribeState by viewModel.subscribeState.collectAsStateWithLifecycle()
+  val context = LocalContext.current
+  val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+  val subscribeState by viewModel.subscribeState.collectAsStateWithLifecycle()
 
-    LaunchedEffect(subscribeState) {
-        when (val state = subscribeState) {
-            is SubscribeState.Success -> {
-                Toast.makeText(context, state.message, Toast.LENGTH_SHORT).show()
-                viewModel.resetSubscribeState()
-            }
-            is SubscribeState.Error -> {
-                Toast.makeText(context, state.message, Toast.LENGTH_LONG).show()
-                viewModel.resetSubscribeState()
-            }
-            else -> Unit
-        }
+  LaunchedEffect(subscribeState) {
+    when (val state = subscribeState) {
+      is SubscribeState.Success -> {
+        Toast.makeText(context, state.message, Toast.LENGTH_SHORT).show()
+        viewModel.resetSubscribeState()
+      }
+
+      is SubscribeState.Error -> {
+        Toast.makeText(context, state.message, Toast.LENGTH_LONG).show()
+        viewModel.resetSubscribeState()
+      }
+
+      else -> Unit
     }
+  }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Live Matches") },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateUp) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                }
-            )
+  Scaffold(
+    topBar = {
+      TopAppBar(
+        title = { Text("Live Matches") },
+        navigationIcon = {
+          IconButton(onClick = onNavigateUp) {
+            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+          }
         }
-    ) { innerPadding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-                .padding(16.dp)
-        ) {
-            Text(text = "Base URL: ${BuildConfig.BASE_URL}", fontWeight = FontWeight.Bold)
-            Spacer(modifier = Modifier.height(8.dp))
-            OutlinedButton(onClick = viewModel::refresh) { Text("Refresh") }
-            Spacer(modifier = Modifier.height(12.dp))
-
-            when (val state = uiState) {
-                BackendUiState.Loading -> {
-                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator()
-                    }
-                }
-                BackendUiState.Empty -> Text("Tidak ada match dari server")
-                is BackendUiState.Error -> Text("Error: ${state.message}")
-                is BackendUiState.Success -> {
-                    val subscribedMatchId = (subscribeState as? SubscribeState.Success)?.matchId
-                    LazyColumn {
-                        items(state.matches, key = { it.id }) { match ->
-                            RemoteMatchItem(
-                                match = match,
-                                isSubscribed = match.id == subscribedMatchId,
-                                isSubscribing = subscribeState is SubscribeState.Loading,
-                                onSubscribe = { viewModel.subscribeToMatch(match.id) }
-                            )
-                        }
-                    }
-                }
-            }
-        }
+      )
     }
+  ) { innerPadding ->
+    Column(
+      modifier = Modifier
+          .fillMaxSize()
+          .padding(innerPadding)
+          .padding(16.dp)
+    ) {
+      Text(text = "Base URL: ${BuildConfig.BASE_URL}", fontWeight = FontWeight.Bold)
+      Spacer(modifier = Modifier.height(8.dp))
+      OutlinedButton(onClick = viewModel::refresh) { Text("Refresh") }
+      Spacer(modifier = Modifier.height(12.dp))
+
+      when (val state = uiState) {
+        BackendUiState.Loading -> {
+          Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            CircularProgressIndicator()
+          }
+        }
+
+        BackendUiState.Empty -> Text("Tidak ada match dari server")
+        is BackendUiState.Error -> Text("Error: ${state.message}")
+        is BackendUiState.Success -> {
+          val subscribedMatchId = (subscribeState as? SubscribeState.Success)?.matchId
+          LazyColumn {
+            items(state.matches, key = { it.id }) { match ->
+              RemoteMatchItem(
+                match = match,
+                isSubscribed = match.id == subscribedMatchId,
+                isSubscribing = subscribeState is SubscribeState.Loading,
+                onSubscribe = { viewModel.subscribeToMatch(match.id) }
+              )
+            }
+          }
+        }
+      }
+    }
+  }
 }
 
 @Composable
 private fun RemoteMatchItem(
-    match: RemoteMatchDto,
-    isSubscribed: Boolean,
-    isSubscribing: Boolean,
-    onSubscribe: () -> Unit
+  match: RemoteMatchDto,
+  isSubscribed: Boolean,
+  isSubscribing: Boolean,
+  onSubscribe: () -> Unit
 ) {
-    val isLive = match.status == "LIVE"
+  val isLive = match.status == "LIVE"
 
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(bottom = 8.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = if (isSubscribed)
-                MaterialTheme.colorScheme.primaryContainer
-            else
-                MaterialTheme.colorScheme.surfaceContainerHigh
+  Card(
+    modifier = Modifier
+        .fillMaxWidth()
+        .padding(bottom = 8.dp),
+    colors = CardDefaults.cardColors(
+      containerColor = if (isSubscribed)
+        MaterialTheme.colorScheme.primaryContainer
+      else
+        MaterialTheme.colorScheme.surfaceContainerHigh
+    )
+  ) {
+    Column(modifier = Modifier.padding(12.dp)) {
+      Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+      ) {
+        Text(
+          text = "${match.teamAName} vs ${match.teamBName}",
+          fontWeight = FontWeight.Bold,
+          modifier = Modifier.weight(1f)
         )
-    ) {
-        Column(modifier = Modifier.padding(12.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "${match.teamAName} vs ${match.teamBName}",
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.weight(1f)
-                )
-                StatusBadge(status = match.status)
-            }
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = "${match.teamAScore}  —  ${match.teamBScore}",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold
-            )
+        StatusBadge(status = match.status)
+      }
+      Spacer(modifier = Modifier.height(4.dp))
+      Text(
+        text = "${match.teamAScore}  —  ${match.teamBScore}",
+        style = MaterialTheme.typography.titleLarge,
+        fontWeight = FontWeight.Bold
+      )
 
-            if (isLive) {
-                Spacer(modifier = Modifier.height(8.dp))
-                if (isSubscribed) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            imageVector = Icons.Filled.CheckCircle,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(16.dp)
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(
-                            text = "Subscribed",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                    }
-                } else {
-                    Button(
-                        onClick = onSubscribe,
-                        enabled = !isSubscribing,
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.primary
-                        )
-                    ) {
-                        if (isSubscribing) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(16.dp),
-                                strokeWidth = 2.dp,
-                                color = MaterialTheme.colorScheme.onPrimary
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                        } else {
-                            Icon(
-                                imageVector = Icons.Filled.Notifications,
-                                contentDescription = null,
-                                modifier = Modifier.size(16.dp)
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                        }
-                        Text("Subscribe LIVE")
-                    }
-                }
+      if (isLive) {
+        Spacer(modifier = Modifier.height(8.dp))
+        if (isSubscribed) {
+          Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(
+              imageVector = Icons.Filled.CheckCircle,
+              contentDescription = null,
+              tint = MaterialTheme.colorScheme.primary,
+              modifier = Modifier.size(16.dp)
+            )
+            Spacer(modifier = Modifier.width(4.dp))
+            Text(
+              text = "Subscribed",
+              style = MaterialTheme.typography.labelMedium,
+              color = MaterialTheme.colorScheme.primary
+            )
+          }
+        } else {
+          Button(
+            onClick = onSubscribe,
+            enabled = !isSubscribing,
+            colors = ButtonDefaults.buttonColors(
+              containerColor = MaterialTheme.colorScheme.primary
+            )
+          ) {
+            if (isSubscribing) {
+              CircularProgressIndicator(
+                modifier = Modifier.size(16.dp),
+                strokeWidth = 2.dp,
+                color = MaterialTheme.colorScheme.onPrimary
+              )
+              Spacer(modifier = Modifier.width(8.dp))
+            } else {
+              Icon(
+                imageVector = Icons.Filled.Notifications,
+                contentDescription = null,
+                modifier = Modifier.size(16.dp)
+              )
+              Spacer(modifier = Modifier.width(4.dp))
             }
+            Text("Subscribe LIVE")
+          }
         }
+      }
     }
+  }
 }
 
 @Composable
 private fun StatusBadge(status: String) {
-    val color = when (status) {
-        "LIVE" -> MaterialTheme.colorScheme.error
-        "END"  -> MaterialTheme.colorScheme.outline
-        else   -> MaterialTheme.colorScheme.onSurfaceVariant
-    }
-    Text(
-        text = status,
-        style = MaterialTheme.typography.labelSmall,
-        color = color,
-        fontWeight = FontWeight.Bold
-    )
+  val color = when (status) {
+    "LIVE" -> MaterialTheme.colorScheme.error
+    "END" -> MaterialTheme.colorScheme.outline
+    else -> MaterialTheme.colorScheme.onSurfaceVariant
+  }
+  Text(
+    text = status,
+    style = MaterialTheme.typography.labelSmall,
+    color = color,
+    fontWeight = FontWeight.Bold
+  )
 }

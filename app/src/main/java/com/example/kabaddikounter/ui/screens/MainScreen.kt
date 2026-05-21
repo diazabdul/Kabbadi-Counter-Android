@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Cloud
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.SportsMartialArts
@@ -27,9 +28,10 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import com.example.kabaddikounter.ui.backend.BackendTestScreen
 import com.example.kabaddikounter.viewModels.ScoreViewModel
 
-private enum class HomeTab { MATCH, HISTORY, SETTINGS }
+private enum class HomeTab { MATCH, HISTORY, SETTINGS, REMOTE }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -56,22 +58,25 @@ fun HomeScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        when (selectedTab) {
-                            HomeTab.MATCH -> "Kabaddi Kounter"
-                            HomeTab.HISTORY -> "History"
-                            HomeTab.SETTINGS -> "Settings"
-                        }
+            if (selectedTab != HomeTab.REMOTE) {
+                TopAppBar(
+                    title = {
+                        Text(
+                            when (selectedTab) {
+                                HomeTab.MATCH -> "Kabaddi Kounter"
+                                HomeTab.HISTORY -> "History"
+                                HomeTab.SETTINGS -> "Settings"
+                                HomeTab.REMOTE -> ""
+                            }
+                        )
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.background,
+                        titleContentColor = MaterialTheme.colorScheme.onBackground,
+                        actionIconContentColor = MaterialTheme.colorScheme.onBackground
                     )
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background,
-                    titleContentColor = MaterialTheme.colorScheme.onBackground,
-                    actionIconContentColor = MaterialTheme.colorScheme.onBackground
                 )
-            )
+            }
         },
         bottomBar = {
             val navItemColors = NavigationBarItemDefaults.colors(
@@ -103,6 +108,13 @@ fun HomeScreen(
                     onClick = { selectedTab = HomeTab.SETTINGS },
                     colors = navItemColors
                 )
+                NavigationBarItem(
+                    icon = { Icon(Icons.Filled.Cloud, contentDescription = null) },
+                    label = { Text("Remote") },
+                    selected = selectedTab == HomeTab.REMOTE,
+                    onClick = { selectedTab = HomeTab.REMOTE },
+                    colors = navItemColors
+                )
             }
         }
     ) { innerPadding ->
@@ -121,6 +133,9 @@ fun HomeScreen(
                     viewModel = viewModel,
                     currentTheme = themeMode,
                     onThemeChange = onThemeChange
+                )
+                HomeTab.REMOTE -> BackendTestScreen(
+                    onNavigateUp = { selectedTab = HomeTab.MATCH }
                 )
             }
         }
