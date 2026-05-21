@@ -24,7 +24,7 @@ android {
         if (localPropsFile.exists()) {
             localPropsFile.withInputStream { stream -> localProps.load(stream) }
         }
-        def backendBaseUrl = localProps.getProperty('BACKEND_BASE_URL', 'http://10.0.2.2:8000/api/')
+        def backendBaseUrl = localProps.getProperty('BACKEND_BASE_URL', 'https://android.bersamahotspot.com/api/')
         if (!backendBaseUrl.endsWith('/')) {
             backendBaseUrl = backendBaseUrl + '/'
         }
@@ -90,4 +90,5 @@ dependencies {
 
     implementation platform('com.google.firebase:firebase-bom:34.13.0')
     implementation 'com.google.firebase:firebase-analytics'
+    implementation 'com.google.firebase:firebase-messaging'
 }
