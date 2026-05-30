@@ -22,8 +22,14 @@ class KabaddiFirebaseMessagingService : FirebaseMessagingService() {
     override fun onMessageReceived(message: RemoteMessage) {
         val data = message.data
         when {
-            data["type"] == "SCORE_UPDATED" -> showScoreNotification(data)
-            data["type"] == "MATCH_ENDED"   -> showMatchEndedNotification(data)
+            data["type"] == "SCORE_UPDATED" -> {
+                showScoreNotification(data)
+                FcmEventBus.notifyRefresh()
+            }
+            data["type"] == "MATCH_ENDED" -> {
+                showMatchEndedNotification(data)
+                FcmEventBus.notifyRefresh()
+            }
             // Notification message (mis. dari Firebase Console test) — tampilkan saat foreground
             message.notification != null -> {
                 val n = message.notification!!

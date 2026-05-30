@@ -4,6 +4,7 @@ import android.app.Application
 import android.content.Context
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.kabaddikounter.FcmEventBus
 import com.example.kabaddikounter.data.remote.dto.RemoteMatchDto
 import com.example.kabaddikounter.data.repository.RemoteMatchRepository
 import com.google.firebase.messaging.FirebaseMessaging
@@ -29,6 +30,13 @@ sealed class SubscribeState {
   data class Error(val message: String) : SubscribeState()
 }
 
+sealed class UnsubscribeState {
+  data object Idle : UnsubscribeState()
+  data object Loading : UnsubscribeState()
+  data class Success(val message: String, val matchId: Int) : UnsubscribeState()
+  data class Error(val message: String) : UnsubscribeState()
+}
+
 class BackendTestViewModel(application: Application) : AndroidViewModel(application) {
   private val repository = RemoteMatchRepository()
   private val prefs = application.getSharedPreferences(
@@ -41,8 +49,17 @@ class BackendTestViewModel(application: Application) : AndroidViewModel(applicat
   private val _subscribeState = MutableStateFlow<SubscribeState>(SubscribeState.Idle)
   val subscribeState: StateFlow<SubscribeState> = _subscribeState.asStateFlow()
 
+  private val _unsubscribeState = MutableStateFlow<UnsubscribeState>(UnsubscribeState.Idle)
+  val unsubscribeState: StateFlow<UnsubscribeState> = _unsubscribeState.asStateFlow()
+
+  private val _subscribedMatchIds = MutableStateFlow<Set<Int>>(emptySet())
+  val subscribedMatchIds: StateFlow<Set<Int>> = _subscribedMatchIds.asStateFlow()
+
   init {
     refresh()
+    viewModelScope.launch {
+      FcmEventBus.refreshSignal.collect { refresh() }
+    }
   }
 
   fun refresh() {
@@ -72,6 +89,7 @@ class BackendTestViewModel(application: Application) : AndroidViewModel(applicat
       val deviceName = android.os.Build.MODEL
       runCatching { repository.subscribeToMatch(matchId, token, deviceName) }
         .onSuccess { response ->
+          _subscribedMatchIds.value += matchId
           _subscribeState.value = SubscribeState.Success(response.message, matchId)
         }
         .onFailure { error ->
@@ -82,8 +100,33 @@ class BackendTestViewModel(application: Application) : AndroidViewModel(applicat
     }
   }
 
+  fun unsubscribeFromMatch(matchId: Int) {
+    _unsubscribeState.value = UnsubscribeState.Loading
+    viewModelScope.launch {
+      val token = getFcmToken()
+      if (token == null) {
+        _unsubscribeState.value = UnsubscribeState.Error("Gagal mendapatkan FCM token")
+        return@launch
+      }
+      runCatching { repository.unsubscribeFromMatch(matchId, token) }
+        .onSuccess { response ->
+          _subscribedMatchIds.value -= matchId
+          _unsubscribeState.value = UnsubscribeState.Success(response.message, matchId)
+        }
+        .onFailure { error ->
+          _unsubscribeState.value = UnsubscribeState.Error(
+            error.message ?: "Gagal unsubscribe dari match"
+          )
+        }
+    }
+  }
+
   fun resetSubscribeState() {
     _subscribeState.value = SubscribeState.Idle
+  }
+
+  fun resetUnsubscribeState() {
+    _unsubscribeState.value = UnsubscribeState.Idle
   }
 
   private suspend fun getFcmToken(): String? = suspendCancellableCoroutine { cont ->

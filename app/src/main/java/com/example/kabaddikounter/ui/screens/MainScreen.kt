@@ -65,8 +65,8 @@ fun HomeScreen(
                             when (selectedTab) {
                                 HomeTab.MATCH -> "Kabaddi Kounter"
                                 HomeTab.HISTORY -> "History"
-                                HomeTab.SETTINGS -> "Settings"
                                 HomeTab.REMOTE -> ""
+                                HomeTab.SETTINGS -> "Settings"
                             }
                         )
                     },
@@ -102,17 +102,17 @@ fun HomeScreen(
                     colors = navItemColors
                 )
                 NavigationBarItem(
-                    icon = { Icon(Icons.Filled.Settings, contentDescription = null) },
-                    label = { Text("Settings") },
-                    selected = selectedTab == HomeTab.SETTINGS,
-                    onClick = { selectedTab = HomeTab.SETTINGS },
-                    colors = navItemColors
-                )
-                NavigationBarItem(
                     icon = { Icon(Icons.Filled.Cloud, contentDescription = null) },
                     label = { Text("Remote") },
                     selected = selectedTab == HomeTab.REMOTE,
                     onClick = { selectedTab = HomeTab.REMOTE },
+                    colors = navItemColors
+                )
+                NavigationBarItem(
+                    icon = { Icon(Icons.Filled.Settings, contentDescription = null) },
+                    label = { Text("Settings") },
+                    selected = selectedTab == HomeTab.SETTINGS,
+                    onClick = { selectedTab = HomeTab.SETTINGS },
                     colors = navItemColors
                 )
             }
@@ -129,13 +129,13 @@ fun HomeScreen(
                     onNavigateBackend = onNavigateBackend
                 )
                 HomeTab.HISTORY -> HistoryScreen(viewModel = viewModel)
+                HomeTab.REMOTE -> BackendTestScreen(
+                    onNavigateUp = { selectedTab = HomeTab.MATCH }
+                )
                 HomeTab.SETTINGS -> SettingsScreen(
                     viewModel = viewModel,
                     currentTheme = themeMode,
                     onThemeChange = onThemeChange
-                )
-                HomeTab.REMOTE -> BackendTestScreen(
-                    onNavigateUp = { selectedTab = HomeTab.MATCH }
                 )
             }
         }

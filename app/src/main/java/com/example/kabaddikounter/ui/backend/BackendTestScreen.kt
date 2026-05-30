@@ -18,6 +18,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.NotificationsOff
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -46,6 +47,7 @@ import com.example.kabaddikounter.data.remote.dto.RemoteMatchDto
 import com.example.kabaddikounter.viewModels.BackendTestViewModel
 import com.example.kabaddikounter.viewModels.BackendUiState
 import com.example.kabaddikounter.viewModels.SubscribeState
+import com.example.kabaddikounter.viewModels.UnsubscribeState
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -56,6 +58,8 @@ fun BackendTestScreen(
   val context = LocalContext.current
   val uiState by viewModel.uiState.collectAsStateWithLifecycle()
   val subscribeState by viewModel.subscribeState.collectAsStateWithLifecycle()
+  val unsubscribeState by viewModel.unsubscribeState.collectAsStateWithLifecycle()
+  val subscribedMatchIds by viewModel.subscribedMatchIds.collectAsStateWithLifecycle()
 
   LaunchedEffect(subscribeState) {
     when (val state = subscribeState) {
@@ -67,6 +71,22 @@ fun BackendTestScreen(
       is SubscribeState.Error -> {
         Toast.makeText(context, state.message, Toast.LENGTH_LONG).show()
         viewModel.resetSubscribeState()
+      }
+
+      else -> Unit
+    }
+  }
+
+  LaunchedEffect(unsubscribeState) {
+    when (val state = unsubscribeState) {
+      is UnsubscribeState.Success -> {
+        Toast.makeText(context, state.message, Toast.LENGTH_SHORT).show()
+        viewModel.resetUnsubscribeState()
+      }
+
+      is UnsubscribeState.Error -> {
+        Toast.makeText(context, state.message, Toast.LENGTH_LONG).show()
+        viewModel.resetUnsubscribeState()
       }
 
       else -> Unit
@@ -93,8 +113,6 @@ fun BackendTestScreen(
     ) {
       Text(text = "Base URL: ${BuildConfig.BASE_URL}", fontWeight = FontWeight.Bold)
       Spacer(modifier = Modifier.height(8.dp))
-      OutlinedButton(onClick = viewModel::refresh) { Text("Refresh") }
-      Spacer(modifier = Modifier.height(12.dp))
 
       when (val state = uiState) {
         BackendUiState.Loading -> {
@@ -106,14 +124,17 @@ fun BackendTestScreen(
         BackendUiState.Empty -> Text("Tidak ada match dari server")
         is BackendUiState.Error -> Text("Error: ${state.message}")
         is BackendUiState.Success -> {
-          val subscribedMatchId = (subscribeState as? SubscribeState.Success)?.matchId
+          val isSubscribing = subscribeState is SubscribeState.Loading
+          val isUnsubscribing = unsubscribeState is UnsubscribeState.Loading
           LazyColumn {
             items(state.matches, key = { it.id }) { match ->
               RemoteMatchItem(
                 match = match,
-                isSubscribed = match.id == subscribedMatchId,
-                isSubscribing = subscribeState is SubscribeState.Loading,
-                onSubscribe = { viewModel.subscribeToMatch(match.id) }
+                isSubscribed = match.id in subscribedMatchIds,
+                isSubscribing = isSubscribing,
+                isUnsubscribing = isUnsubscribing,
+                onSubscribe = { viewModel.subscribeToMatch(match.id) },
+                onUnsubscribe = { viewModel.unsubscribeFromMatch(match.id) }
               )
             }
           }
@@ -128,7 +149,9 @@ private fun RemoteMatchItem(
   match: RemoteMatchDto,
   isSubscribed: Boolean,
   isSubscribing: Boolean,
-  onSubscribe: () -> Unit
+  isUnsubscribing: Boolean,
+  onSubscribe: () -> Unit,
+  onUnsubscribe: () -> Unit
 ) {
   val isLive = match.status == "LIVE"
 
@@ -166,7 +189,10 @@ private fun RemoteMatchItem(
       if (isLive) {
         Spacer(modifier = Modifier.height(8.dp))
         if (isSubscribed) {
-          Row(verticalAlignment = Alignment.CenterVertically) {
+          Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth()
+          ) {
             Icon(
               imageVector = Icons.Filled.CheckCircle,
               contentDescription = null,
@@ -177,8 +203,33 @@ private fun RemoteMatchItem(
             Text(
               text = "Subscribed",
               style = MaterialTheme.typography.labelMedium,
-              color = MaterialTheme.colorScheme.primary
+              color = MaterialTheme.colorScheme.primary,
+              modifier = Modifier.weight(1f)
             )
+            OutlinedButton(
+              onClick = onUnsubscribe,
+              enabled = !isUnsubscribing,
+              colors = ButtonDefaults.outlinedButtonColors(
+                contentColor = MaterialTheme.colorScheme.error
+              )
+            ) {
+              if (isUnsubscribing) {
+                CircularProgressIndicator(
+                  modifier = Modifier.size(16.dp),
+                  strokeWidth = 2.dp,
+                  color = MaterialTheme.colorScheme.error
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+              } else {
+                Icon(
+                  imageVector = Icons.Filled.NotificationsOff,
+                  contentDescription = null,
+                  modifier = Modifier.size(16.dp)
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+              }
+              Text("Unsubscribe")
+            }
           }
         } else {
           Button(
