@@ -11,10 +11,16 @@ import com.google.firebase.messaging.FirebaseMessaging
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
 import androidx.core.content.edit
+import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.emptyPreferences
+import com.example.kabaddikounter.data.PrefKeys
+import com.example.kabaddikounter.data.dataStore
 
 sealed class BackendUiState {
   data object Loading : BackendUiState()
@@ -39,8 +45,8 @@ sealed class UnsubscribeState {
 
 class BackendTestViewModel(application: Application) : AndroidViewModel(application) {
   private val repository = RemoteMatchRepository()
-  private val prefs = application.getSharedPreferences(
-    "${application.packageName}_preferences", Context.MODE_PRIVATE
+  private val prefs = getApplication<Application>().getSharedPreferences(
+    "${getApplication<Application>().packageName}_preferences", Context.MODE_PRIVATE
   )
 
   private val _uiState = MutableStateFlow<BackendUiState>(BackendUiState.Loading)
@@ -59,6 +65,17 @@ class BackendTestViewModel(application: Application) : AndroidViewModel(applicat
     refresh()
     viewModelScope.launch {
       FcmEventBus.refreshSignal.collect { refresh() }
+    }
+
+    // Load persisted subscribed match ids from DataStore and keep state in sync.
+    viewModelScope.launch {
+      getApplication<Application>().dataStore.data
+        .catch { emit(emptyPreferences()) }
+        .map { prefs ->
+          prefs[PrefKeys.SUBSCRIBED_MATCH_IDS]?.mapNotNull { it.toIntOrNull() }?.toSet()
+            ?: emptySet()
+        }
+        .collect { ids -> _subscribedMatchIds.value = ids }
     }
   }
 
@@ -89,7 +106,11 @@ class BackendTestViewModel(application: Application) : AndroidViewModel(applicat
       val deviceName = android.os.Build.MODEL
       runCatching { repository.subscribeToMatch(matchId, token, deviceName) }
         .onSuccess { response ->
-          _subscribedMatchIds.value += matchId
+          // update in-memory state and persist
+          _subscribedMatchIds.value = _subscribedMatchIds.value + matchId
+          getApplication<Application>().dataStore.edit { prefs ->
+            prefs[PrefKeys.SUBSCRIBED_MATCH_IDS] = _subscribedMatchIds.value.map { it.toString() }.toSet()
+          }
           _subscribeState.value = SubscribeState.Success(response.message, matchId)
         }
         .onFailure { error ->
@@ -110,7 +131,11 @@ class BackendTestViewModel(application: Application) : AndroidViewModel(applicat
       }
       runCatching { repository.unsubscribeFromMatch(matchId, token) }
         .onSuccess { response ->
-          _subscribedMatchIds.value -= matchId
+          // update in-memory state and persist
+          _subscribedMatchIds.value = _subscribedMatchIds.value - matchId
+          getApplication<Application>().dataStore.edit { prefs ->
+            prefs[PrefKeys.SUBSCRIBED_MATCH_IDS] = _subscribedMatchIds.value.map { it.toString() }.toSet()
+          }
           _unsubscribeState.value = UnsubscribeState.Success(response.message, matchId)
         }
         .onFailure { error ->

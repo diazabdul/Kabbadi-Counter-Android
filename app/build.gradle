@@ -91,4 +91,6 @@ dependencies {
     implementation platform('com.google.firebase:firebase-bom:34.13.0')
     implementation 'com.google.firebase:firebase-analytics'
     implementation 'com.google.firebase:firebase-messaging'
+    // DataStore for persisting small sets of preferences (used for subscribed match ids)
+    implementation 'androidx.datastore:datastore-preferences:1.0.0'
 }
