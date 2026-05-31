@@ -39,7 +39,6 @@ fun HomeScreen(
     viewModel: ScoreViewModel,
     themeMode: String,
     onThemeChange: (String) -> Unit,
-    onNavigateBackend: () -> Unit,
     onExportJson: (String) -> Unit
 ) {
     val context = LocalContext.current
@@ -58,25 +57,23 @@ fun HomeScreen(
 
     Scaffold(
         topBar = {
-            if (selectedTab != HomeTab.REMOTE) {
-                TopAppBar(
-                    title = {
-                        Text(
-                            when (selectedTab) {
-                                HomeTab.MATCH -> "Kabaddi Kounter"
-                                HomeTab.HISTORY -> "History"
-                                HomeTab.REMOTE -> "Live Matches"
-                                HomeTab.SETTINGS -> "Settings"
-                            }
-                        )
-                    },
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.background,
-                        titleContentColor = MaterialTheme.colorScheme.onBackground,
-                        actionIconContentColor = MaterialTheme.colorScheme.onBackground
+            TopAppBar(
+                title = {
+                    Text(
+                        when (selectedTab) {
+                            HomeTab.MATCH -> "Kabaddi Kounter"
+                            HomeTab.HISTORY -> "History"
+                            HomeTab.REMOTE -> "Live Matches"
+                            HomeTab.SETTINGS -> "Settings"
+                        }
                     )
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.background,
+                    titleContentColor = MaterialTheme.colorScheme.onBackground,
+                    actionIconContentColor = MaterialTheme.colorScheme.onBackground
                 )
-            }
+            )
         },
         bottomBar = {
             val navItemColors = NavigationBarItemDefaults.colors(

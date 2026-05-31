@@ -1,7 +1,6 @@
 package com.example.kabaddikounter.viewModels
 
 import android.app.Application
-import android.content.Context
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.kabaddikounter.FcmEventBus
@@ -16,7 +15,6 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
-import androidx.core.content.edit
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.emptyPreferences
 import com.example.kabaddikounter.data.PrefKeys
@@ -45,9 +43,6 @@ sealed class UnsubscribeState {
 
 class BackendTestViewModel(application: Application) : AndroidViewModel(application) {
   private val repository = RemoteMatchRepository()
-  private val prefs = getApplication<Application>().getSharedPreferences(
-    "${getApplication<Application>().packageName}_preferences", Context.MODE_PRIVATE
-  )
 
   private val _uiState = MutableStateFlow<BackendUiState>(BackendUiState.Loading)
   val uiState: StateFlow<BackendUiState> = _uiState.asStateFlow()
@@ -97,7 +92,7 @@ class BackendTestViewModel(application: Application) : AndroidViewModel(applicat
             )
           }
       } finally {
-          _isRefreshing.value = false
+        _isRefreshing.value = false
       }
     }
   }
@@ -116,7 +111,8 @@ class BackendTestViewModel(application: Application) : AndroidViewModel(applicat
           // update in-memory state and persist
           _subscribedMatchIds.value = _subscribedMatchIds.value + matchId
           getApplication<Application>().dataStore.edit { prefs ->
-            prefs[PrefKeys.SUBSCRIBED_MATCH_IDS] = _subscribedMatchIds.value.map { it.toString() }.toSet()
+            prefs[PrefKeys.SUBSCRIBED_MATCH_IDS] =
+              _subscribedMatchIds.value.map { it.toString() }.toSet()
           }
           _subscribeState.value = SubscribeState.Success(response.message, matchId)
         }
@@ -141,7 +137,8 @@ class BackendTestViewModel(application: Application) : AndroidViewModel(applicat
           // update in-memory state and persist
           _subscribedMatchIds.value = _subscribedMatchIds.value - matchId
           getApplication<Application>().dataStore.edit { prefs ->
-            prefs[PrefKeys.SUBSCRIBED_MATCH_IDS] = _subscribedMatchIds.value.map { it.toString() }.toSet()
+            prefs[PrefKeys.SUBSCRIBED_MATCH_IDS] =
+              _subscribedMatchIds.value.map { it.toString() }.toSet()
           }
           _unsubscribeState.value = UnsubscribeState.Success(response.message, matchId)
         }
@@ -163,10 +160,7 @@ class BackendTestViewModel(application: Application) : AndroidViewModel(applicat
 
   private suspend fun getFcmToken(): String? = suspendCancellableCoroutine { cont ->
     FirebaseMessaging.getInstance().token
-      .addOnSuccessListener { token ->
-        prefs.edit { putString("fcm_token", token) }
-        cont.resume(token)
-      }
+      .addOnSuccessListener { token -> cont.resume(token) }
       .addOnFailureListener { cont.resume(null) }
   }
 }

@@ -24,14 +24,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
-import androidx.core.content.edit
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import com.example.kabaddikounter.ui.backend.BackendTestScreen
 import com.example.kabaddikounter.ui.screens.HomeScreen
 import com.example.kabaddikounter.ui.theme.KabaddiKounterTheme
+import com.example.kabaddikounter.viewModels.AppViewModel
 import com.example.kabaddikounter.viewModels.ScoreViewModel
 import com.google.gson.GsonBuilder
 import com.google.gson.JsonParser
@@ -67,13 +67,8 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 private fun AppRoot() {
-    val context = LocalContext.current
-    val prefs = remember {
-        context.getSharedPreferences("${context.packageName}_preferences", android.content.Context.MODE_PRIVATE)
-    }
-    var themeMode by remember {
-        mutableStateOf(prefs.getString("pref_theme_mode", "system") ?: "system")
-    }
+    val appViewModel: AppViewModel = viewModel()
+    val themeMode by appViewModel.themeMode.collectAsStateWithLifecycle()
 
     KabaddiKounterTheme(
         darkTheme = when (themeMode) {
@@ -84,10 +79,7 @@ private fun AppRoot() {
     ) {
         AppNavigation(
             themeMode = themeMode,
-            onThemeChange = { mode ->
-                themeMode = mode
-                prefs.edit { putString("pref_theme_mode", mode) }
-            }
+            onThemeChange = appViewModel::setThemeMode
         )
     }
 }
@@ -166,9 +158,6 @@ private fun AppNavigation(
                     )
                 }
             )
-        }
-        composable("backend") {
-            BackendTestScreen()
         }
     }
 }
