@@ -65,7 +65,7 @@ fun HomeScreen(
                             when (selectedTab) {
                                 HomeTab.MATCH -> "Kabaddi Kounter"
                                 HomeTab.HISTORY -> "History"
-                                HomeTab.REMOTE -> ""
+                                HomeTab.REMOTE -> "Live Matches"
                                 HomeTab.SETTINGS -> "Settings"
                             }
                         )
@@ -125,13 +125,10 @@ fun HomeScreen(
         ) {
             when (selectedTab) {
                 HomeTab.MATCH -> MatchScreen(
-                    viewModel = viewModel,
-                    onNavigateBackend = onNavigateBackend
+                    viewModel = viewModel
                 )
                 HomeTab.HISTORY -> HistoryScreen(viewModel = viewModel)
-                HomeTab.REMOTE -> BackendTestScreen(
-                    onNavigateUp = { selectedTab = HomeTab.MATCH }
-                )
+                HomeTab.REMOTE -> BackendTestScreen()
                 HomeTab.SETTINGS -> SettingsScreen(
                     viewModel = viewModel,
                     currentTheme = themeMode,

@@ -24,6 +24,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
+import androidx.core.content.edit
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -85,7 +86,7 @@ private fun AppRoot() {
             themeMode = themeMode,
             onThemeChange = { mode ->
                 themeMode = mode
-                prefs.edit().putString("pref_theme_mode", mode).apply()
+                prefs.edit { putString("pref_theme_mode", mode) }
             }
         )
     }
@@ -102,6 +103,10 @@ private fun AppNavigation(
 
     var pendingJson by remember { mutableStateOf<String?>(null) }
     var jsonToShow by remember { mutableStateOf<String?>(null) }
+
+    fun closeJsonDialog() {
+        jsonToShow = null
+    }
 
     val createDocumentLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.CreateDocument("application/json")
@@ -133,7 +138,7 @@ private fun AppNavigation(
 
     jsonToShow?.let { json ->
         AlertDialog(
-            onDismissRequest = { jsonToShow = null },
+            onDismissRequest = { closeJsonDialog() },
             title = { Text("Downloaded JSON") },
             text = {
                 Text(
@@ -143,7 +148,7 @@ private fun AppNavigation(
                 )
             },
             confirmButton = {
-                TextButton(onClick = { jsonToShow = null }) { Text("Close") }
+                TextButton(onClick = { closeJsonDialog() }) { Text("Close") }
             }
         )
     }
@@ -154,7 +159,6 @@ private fun AppNavigation(
                 viewModel = scoreViewModel,
                 themeMode = themeMode,
                 onThemeChange = onThemeChange,
-                onNavigateBackend = { navController.navigate("backend") },
                 onExportJson = { json: String ->
                     pendingJson = json
                     createDocumentLauncher.launch(
@@ -164,9 +168,7 @@ private fun AppNavigation(
             )
         }
         composable("backend") {
-            BackendTestScreen(
-                onNavigateUp = { navController.popBackStack() }
-            )
+            BackendTestScreen()
         }
     }
 }

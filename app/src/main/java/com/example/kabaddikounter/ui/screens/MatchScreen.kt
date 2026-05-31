@@ -1,7 +1,6 @@
 package com.example.kabaddikounter.ui.screens
 
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -37,8 +36,7 @@ import com.example.kabaddikounter.viewModels.ScoreViewModel
 
 @Composable
 fun MatchScreen(
-    viewModel: ScoreViewModel,
-    onNavigateBackend: () -> Unit
+    viewModel: ScoreViewModel
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 

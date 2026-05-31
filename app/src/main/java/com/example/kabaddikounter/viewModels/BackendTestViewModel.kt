@@ -52,6 +52,9 @@ class BackendTestViewModel(application: Application) : AndroidViewModel(applicat
   private val _uiState = MutableStateFlow<BackendUiState>(BackendUiState.Loading)
   val uiState: StateFlow<BackendUiState> = _uiState.asStateFlow()
 
+  private val _isRefreshing = MutableStateFlow(false)
+  val isRefreshing: StateFlow<Boolean> = _isRefreshing.asStateFlow()
+
   private val _subscribeState = MutableStateFlow<SubscribeState>(SubscribeState.Idle)
   val subscribeState: StateFlow<SubscribeState> = _subscribeState.asStateFlow()
 
@@ -80,18 +83,22 @@ class BackendTestViewModel(application: Application) : AndroidViewModel(applicat
   }
 
   fun refresh() {
-    _uiState.value = BackendUiState.Loading
     viewModelScope.launch {
-      runCatching { repository.fetchMatches() }
-        .onSuccess { matches ->
-          _uiState.value = if (matches.isEmpty()) BackendUiState.Empty
-          else BackendUiState.Success(matches)
-        }
-        .onFailure { error ->
-          _uiState.value = BackendUiState.Error(
-            error.message ?: "Unknown error while fetching matches"
-          )
-        }
+      _isRefreshing.value = true
+      try {
+        runCatching { repository.fetchMatches() }
+          .onSuccess { matches ->
+            _uiState.value = if (matches.isEmpty()) BackendUiState.Empty
+            else BackendUiState.Success(matches)
+          }
+          .onFailure { error ->
+            _uiState.value = BackendUiState.Error(
+              error.message ?: "Unknown error while fetching matches"
+            )
+          }
+      } finally {
+          _isRefreshing.value = false
+      }
     }
   }
 
