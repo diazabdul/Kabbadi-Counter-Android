@@ -1,120 +1,345 @@
 package com.example.kabaddikounter.ui.screens
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.draggable
+import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.kabaddikounter.data.MatchRecord
 import com.example.kabaddikounter.data.STATUS_LOCAL_FINISHED
 import com.example.kabaddikounter.viewModels.ScoreViewModel
+import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Date
+import java.util.Locale
+import kotlin.math.roundToInt
 
 @Composable
 fun HistoryScreen(viewModel: ScoreViewModel) {
-    val allMatches by viewModel.allMatches.collectAsStateWithLifecycle(initialValue = emptyList())
+  val allMatches by viewModel.allMatches.collectAsStateWithLifecycle(initialValue = emptyList())
 
-    if (allMatches.isEmpty()) {
-        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Text(
-                text = "No match history yet",
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-    } else {
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            items(allMatches, key = { it.id }) { match ->
-                MatchHistoryItem(
-                    match = match,
-                    onDelete = { viewModel.deleteMatch(match) },
-                    onLoad = { viewModel.loadMatch(match) }
-                )
-            }
-        }
+  if (allMatches.isEmpty()) {
+    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+      Text(
+        text = "No match history yet",
+        style = MaterialTheme.typography.bodyLarge,
+        color = MaterialTheme.colorScheme.onSurfaceVariant
+      )
     }
+  } else {
+    LazyColumn(
+      modifier = Modifier.fillMaxSize(),
+      contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+      verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+      items(allMatches, key = { it.id }) { match ->
+        MatchHistoryItem(
+          match = match,
+          onDelete = { viewModel.deleteMatch(match) },
+          onLoad = { viewModel.loadMatch(match) }
+        )
+      }
+    }
+  }
 }
 
 @Composable
 private fun MatchHistoryItem(
-    match: MatchRecord,
-    onDelete: () -> Unit,
-    onLoad: () -> Unit
+  match: MatchRecord,
+  onDelete: () -> Unit,
+  onLoad: () -> Unit
 ) {
-    val isFinished = match.status == STATUS_LOCAL_FINISHED
+  SwipeToRevealDelete(onDeleteConfirmed = onDelete) {
+    MatchCard(match = match, onLoad = onLoad)
+  }
+}
 
-    Card(
-        onClick = onLoad,
-        modifier = Modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.large,
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainer
+@Composable
+private fun SwipeToRevealDelete(
+  onDeleteConfirmed: () -> Unit,
+  content: @Composable () -> Unit
+) {
+  var showDialog by remember { mutableStateOf(false) }
+  val offsetX = remember { Animatable(0f) }
+  val scope = rememberCoroutineScope()
+  val density = LocalDensity.current
+  val revealWidthDp = 68.dp
+  val revealWidthPx = with(density) { revealWidthDp.toPx() }
+
+  if (showDialog) {
+    AlertDialog(
+      onDismissRequest = {
+        showDialog = false
+        scope.launch {
+          offsetX.animateTo(
+            0f,
+            spring(dampingRatio = Spring.DampingRatioMediumBouncy)
+          )
+        }
+      },
+      title = { Text("Hapus Pertandingan?") },
+      text = { Text("Pertandingan ini akan dihapus secara permanen dan tidak dapat dikembalikan.") },
+      confirmButton = {
+        TextButton(onClick = {
+          showDialog = false
+          onDeleteConfirmed()
+        }) {
+          Text("Hapus", color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold)
+        }
+      },
+      dismissButton = {
+        TextButton(onClick = {
+          showDialog = false
+          scope.launch {
+            offsetX.animateTo(
+              0f,
+              spring(dampingRatio = Spring.DampingRatioMediumBouncy)
+            )
+          }
+        }) {
+          Text("Batal")
+        }
+      }
+    )
+  }
+
+  Box(modifier = Modifier.fillMaxWidth()) {
+    // Delete action revealed on swipe left
+    Box(
+      modifier = Modifier
+        .matchParentSize(),
+      contentAlignment = Alignment.CenterEnd
+    ) {
+      Box(
+        modifier = Modifier
+          .fillMaxHeight()
+          .width(revealWidthDp)
+          .background(MaterialTheme.colorScheme.errorContainer, MaterialTheme.shapes.large)
+          .clickable { showDialog = true },
+        contentAlignment = Alignment.Center
+      ) {
+        Icon(
+          Icons.Default.Delete,
+          contentDescription = "Hapus pertandingan",
+          tint = MaterialTheme.colorScheme.onErrorContainer
+        )
+      }
+    }
+
+    // Card that slides left on swipe
+    Box(
+      modifier = Modifier
+        .fillMaxWidth()
+        .offset { IntOffset(offsetX.value.roundToInt(), 0) }
+        .draggable(
+          orientation = Orientation.Horizontal,
+          state = rememberDraggableState { delta ->
+            scope.launch {
+              offsetX.snapTo((offsetX.value + delta).coerceIn(-revealWidthPx, 0f))
+            }
+          },
+          onDragStopped = {
+            scope.launch {
+              if (offsetX.value < -revealWidthPx / 2f) {
+                offsetX.animateTo(
+                  -revealWidthPx,
+                  spring(dampingRatio = Spring.DampingRatioMediumBouncy)
+                )
+              } else {
+                offsetX.animateTo(
+                  0f,
+                  spring(dampingRatio = Spring.DampingRatioMediumBouncy)
+                )
+              }
+            }
+          }
         )
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = match.teamAName,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 16.sp,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                Text(
-                    text = match.teamBName,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 16.sp,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                Text(
-                    text = if (isFinished) "Finished" else "Draft",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = if (isFinished) MaterialTheme.colorScheme.primary
-                            else MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            Text(
-                text = "${match.scoreA} – ${match.scoreB}",
-                fontSize = 28.sp,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.padding(horizontal = 12.dp)
-            )
-            IconButton(onClick = onDelete) {
-                Icon(
-                    Icons.Default.Delete,
-                    contentDescription = "Delete match",
-                    tint = MaterialTheme.colorScheme.error
-                )
-            }
-        }
+      content()
     }
+  }
+}
+
+@Composable
+private fun MatchCard(match: MatchRecord, onLoad: () -> Unit) {
+  val isFinished = match.status == STATUS_LOCAL_FINISHED
+  val teamAWins = match.scoreA > match.scoreB
+  val teamBWins = match.scoreB > match.scoreA
+
+  val winnerColor = Color(0xFFC6FF00)
+  val loserColor = MaterialTheme.colorScheme.onSurfaceVariant
+
+  val formattedDateTime = remember(match.timestamp) { formatMatchDateTime(match.timestamp) }
+
+  Card(
+    onClick = onLoad,
+    modifier = Modifier.fillMaxWidth(),
+    shape = MaterialTheme.shapes.large,
+    colors = CardDefaults.cardColors(
+      containerColor = MaterialTheme.colorScheme.surfaceContainer
+    )
+  ) {
+    Column(
+      modifier = Modifier
+        .fillMaxWidth()
+        .padding(horizontal = 16.dp, vertical = 14.dp)
+    ) {
+      Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.Top,
+        horizontalArrangement = Arrangement.SpaceBetween
+      ) {
+        Column {
+          Text(
+            text = "#%03d".format(match.id),
+            style = MaterialTheme.typography.labelMedium,
+            fontFamily = FontFamily.Monospace,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            letterSpacing = 1.sp
+          )
+          Text(
+            text = formattedDateTime,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+          )
+        }
+        StatusBadge(isFinished)
+      }
+
+      Spacer(modifier = Modifier.height(12.dp))
+
+      Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically
+      ) {
+        Column(modifier = Modifier.weight(1f)) {
+          Text(
+            text = match.teamAName,
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = if (teamAWins) FontWeight.Bold else FontWeight.Normal,
+            color = MaterialTheme.colorScheme.onSurface
+          )
+          Text(
+            text = match.scoreA.toString(),
+            fontSize = 40.sp,
+            fontWeight = FontWeight.Bold,
+            color = if (teamAWins) winnerColor else loserColor
+          )
+        }
+
+        Text(
+          text = "VS",
+          style = MaterialTheme.typography.labelMedium,
+          color = MaterialTheme.colorScheme.onSurfaceVariant,
+          modifier = Modifier.padding(horizontal = 8.dp)
+        )
+
+        Column(
+          modifier = Modifier.weight(1f),
+          horizontalAlignment = Alignment.End
+        ) {
+          Text(
+            text = match.teamBName,
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = if (teamBWins) FontWeight.Bold else FontWeight.Normal,
+            color = MaterialTheme.colorScheme.onSurface,
+            textAlign = TextAlign.End
+          )
+          Text(
+            text = match.scoreB.toString(),
+            fontSize = 40.sp,
+            fontWeight = FontWeight.Bold,
+            color = if (teamBWins) winnerColor else loserColor,
+            textAlign = TextAlign.End
+          )
+        }
+      }
+    }
+  }
+}
+
+@Composable
+private fun StatusBadge(isFinished: Boolean) {
+  Box(
+    modifier = Modifier
+      .border(
+        width = 1.dp,
+        color = MaterialTheme.colorScheme.onSurface,
+        shape = RoundedCornerShape(50)
+      )
+      .padding(horizontal = 10.dp, vertical = 4.dp)
+  ) {
+    Text(
+      text = if (isFinished) "Finished" else "Ongoing",
+      style = MaterialTheme.typography.labelSmall,
+      fontWeight = FontWeight.Bold,
+      color = MaterialTheme.colorScheme.onSurface,
+      letterSpacing = 0.5.sp
+    )
+  }
+}
+
+private fun formatMatchDateTime(timestamp: Long): String {
+  val now = Calendar.getInstance()
+  val matchCal = Calendar.getInstance().apply { timeInMillis = timestamp }
+  val timeStr = SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(timestamp))
+
+  val sameYear = now.get(Calendar.YEAR) == matchCal.get(Calendar.YEAR)
+  val dayDiff = now.get(Calendar.DAY_OF_YEAR) - matchCal.get(Calendar.DAY_OF_YEAR)
+
+  return when {
+    sameYear && dayDiff == 0 -> "Today · $timeStr"
+    sameYear && dayDiff == 1 -> "Yesterday · $timeStr"
+    else -> {
+      val dateStr = SimpleDateFormat("dd MMM", Locale.getDefault()).format(Date(timestamp))
+      "$dateStr · $timeStr"
+    }
+  }
 }

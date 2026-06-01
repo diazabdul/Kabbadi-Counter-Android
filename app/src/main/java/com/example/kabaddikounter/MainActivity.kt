@@ -1,11 +1,14 @@
 package com.example.kabaddikounter
 
+import android.app.NotificationChannel
+import android.app.NotificationManager
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.widget.Toast
-import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
+import androidx.appcompat.app.AppCompatActivity
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.rememberScrollState
@@ -21,33 +24,51 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import com.example.kabaddikounter.ui.backend.BackendTestScreen
 import com.example.kabaddikounter.ui.screens.HomeScreen
 import com.example.kabaddikounter.ui.theme.KabaddiKounterTheme
+import com.example.kabaddikounter.viewModels.AppViewModel
 import com.example.kabaddikounter.viewModels.ScoreViewModel
 import com.google.gson.GsonBuilder
 import com.google.gson.JsonParser
 
-class MainActivity : ComponentActivity() {
+class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        createNotificationChannel()
+        requestNotificationPermission()
         setContent { AppRoot() }
+    }
+
+    private fun createNotificationChannel() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channel = NotificationChannel(
+                KabaddiFirebaseMessagingService.CHANNEL_ID,
+                "Kabaddi Live Match",
+                NotificationManager.IMPORTANCE_HIGH
+            ).apply {
+                description = "Notifikasi skor dan status match live"
+            }
+            (getSystemService(NOTIFICATION_SERVICE) as NotificationManager)
+                .createNotificationChannel(channel)
+        }
+    }
+
+    private fun requestNotificationPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            requestPermissions(arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), 0)
+        }
     }
 }
 
 @Composable
 private fun AppRoot() {
-    val context = LocalContext.current
-    val prefs = remember {
-        context.getSharedPreferences("${context.packageName}_preferences", android.content.Context.MODE_PRIVATE)
-    }
-    var themeMode by remember {
-        mutableStateOf(prefs.getString("pref_theme_mode", "system") ?: "system")
-    }
+    val appViewModel: AppViewModel = viewModel()
+    val themeMode by appViewModel.themeMode.collectAsStateWithLifecycle()
 
     KabaddiKounterTheme(
         darkTheme = when (themeMode) {
@@ -58,10 +79,7 @@ private fun AppRoot() {
     ) {
         AppNavigation(
             themeMode = themeMode,
-            onThemeChange = { mode ->
-                themeMode = mode
-                prefs.edit().putString("pref_theme_mode", mode).apply()
-            }
+            onThemeChange = appViewModel::setThemeMode
         )
     }
 }
@@ -77,6 +95,10 @@ private fun AppNavigation(
 
     var pendingJson by remember { mutableStateOf<String?>(null) }
     var jsonToShow by remember { mutableStateOf<String?>(null) }
+
+    fun closeJsonDialog() {
+        jsonToShow = null
+    }
 
     val createDocumentLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.CreateDocument("application/json")
@@ -108,7 +130,7 @@ private fun AppNavigation(
 
     jsonToShow?.let { json ->
         AlertDialog(
-            onDismissRequest = { jsonToShow = null },
+            onDismissRequest = { closeJsonDialog() },
             title = { Text("Downloaded JSON") },
             text = {
                 Text(
@@ -118,7 +140,7 @@ private fun AppNavigation(
                 )
             },
             confirmButton = {
-                TextButton(onClick = { jsonToShow = null }) { Text("Close") }
+                TextButton(onClick = { closeJsonDialog() }) { Text("Close") }
             }
         )
     }
@@ -129,18 +151,12 @@ private fun AppNavigation(
                 viewModel = scoreViewModel,
                 themeMode = themeMode,
                 onThemeChange = onThemeChange,
-                onNavigateBackend = { navController.navigate("backend") },
                 onExportJson = { json: String ->
                     pendingJson = json
                     createDocumentLauncher.launch(
                         "Kabaddi_History_${System.currentTimeMillis()}.json"
                     )
                 }
-            )
-        }
-        composable("backend") {
-            BackendTestScreen(
-                onNavigateUp = { navController.popBackStack() }
             )
         }
     }

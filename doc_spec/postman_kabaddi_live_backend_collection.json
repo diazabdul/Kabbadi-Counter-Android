@@ -1,0 +1,226 @@
+{
+  "info": {
+    "name": "Kabaddi Live Backend API",
+    "_postman_id": "4a0c9c11-3de6-4c4e-b9b0-1e3dcf58f9f2",
+    "description": "Collection untuk testing API Kabaddi Live Backend (match list, subscribe, unsubscribe, score update, stop, reset).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Match",
+      "item": [
+        {
+          "name": "Get Match List",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/match",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "match"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Match List (with fcm_token)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/match?fcm_token={{fcm_token}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "match"
+              ],
+              "query": [
+                {
+                  "key": "fcm_token",
+                  "value": "{{fcm_token}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Match Detail",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/match/{{match_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "match",
+                "{{match_id}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Match",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"team_a_name\": \"Garuda\",\n  \"team_b_name\": \"Rajawali\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/match",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "match"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Subscribe Match",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fcm_token\": \"{{fcm_token}}\",\n  \"device_name\": \"Android Test Device\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/match/{{match_id}}/subscribe",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "match",
+                "{{match_id}}",
+                "subscribe"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Unsubscribe Match",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fcm_token\": \"{{fcm_token}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/match/{{match_id}}/subscribe",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "match",
+                "{{match_id}}",
+                "subscribe"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Update Score",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"team\": \"A\",\n  \"point\": 1\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/match/{{match_id}}/score",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "match",
+                "{{match_id}}",
+                "score"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Stop Match",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/match/{{match_id}}/stop",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "match",
+                "{{match_id}}",
+                "stop"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Reset Match",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/match/{{match_id}}/reset",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "match",
+                "{{match_id}}",
+                "reset"
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8000/api"
+    },
+    {
+      "key": "match_id",
+      "value": "1"
+    },
+    {
+      "key": "fcm_token",
+      "value": "ANDROID_FCM_TOKEN"
+    }
+  ]
+}

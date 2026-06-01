@@ -84,7 +84,6 @@ fun SettingsScreen(
         verticalArrangement = Arrangement.SpaceBetween
     ) {
         Column {
-            // ── Theme ──────────────────────────────────────────────
             SectionLabel("Theme")
 
             ThemeSegmentedControl(
@@ -94,7 +93,6 @@ fun SettingsScreen(
 
             Spacer(modifier = Modifier.height(20.dp))
 
-            // ── Data ───────────────────────────────────────────────
             SectionLabel("Data")
 
             Card(
@@ -104,7 +102,6 @@ fun SettingsScreen(
                 ),
                 modifier = Modifier.fillMaxWidth()
             ) {
-                // Export all as JSON
                 SettingsItem(
                     title = "Export all as JSON",
                     subtitle = "${allMatches.size} matches",
@@ -116,7 +113,6 @@ fun SettingsScreen(
                     color = MaterialTheme.colorScheme.outlineVariant
                 )
 
-                // Clear history
                 SettingsItem(
                     title = "Clear history",
                     subtitle = "This cannot be undone",
@@ -129,7 +125,6 @@ fun SettingsScreen(
                     color = MaterialTheme.colorScheme.outlineVariant
                 )
 
-                // Base URL (display only)
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -150,7 +145,6 @@ fun SettingsScreen(
             }
         }
 
-        // ── Footer ─────────────────────────────────────────────────
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -209,7 +203,7 @@ private fun ThemeSegmentedControl(
                             contentDescription = option.label,
                             modifier = Modifier.size(20.dp),
                             tint = if (isSelected) MaterialTheme.colorScheme.onPrimary
-                                   else MaterialTheme.colorScheme.onSurfaceVariant
+                            else MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
@@ -217,7 +211,7 @@ private fun ThemeSegmentedControl(
                             style = MaterialTheme.typography.labelMedium,
                             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
                             color = if (isSelected) MaterialTheme.colorScheme.onPrimary
-                                    else MaterialTheme.colorScheme.onSurfaceVariant
+                            else MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
