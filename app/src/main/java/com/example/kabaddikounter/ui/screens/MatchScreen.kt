@@ -10,18 +10,19 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Flag
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardColors
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButtonDefaults
@@ -37,7 +38,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.foundation.layout.size
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
@@ -52,6 +52,7 @@ fun MatchScreen(
 ) {
   val uiState by viewModel.uiState.collectAsStateWithLifecycle()
   var showFinishDialog by remember { mutableStateOf(false) }
+
 
   if (showFinishDialog) {
     AlertDialog(
@@ -123,14 +124,35 @@ fun MatchScreen(
 
     Spacer(modifier = Modifier.height(8.dp))
 
-    Text(
-      text = "V S",
+    Row(
       modifier = Modifier.fillMaxWidth(),
-      textAlign = TextAlign.Center,
-      style = MaterialTheme.typography.labelSmall,
-      color = MaterialTheme.colorScheme.onSurfaceVariant,
-      letterSpacing = 4.sp
-    )
+      horizontalArrangement = Arrangement.Center,
+      verticalAlignment = Alignment.CenterVertically
+    ) {
+      Text(
+        text = "V S",
+        style = MaterialTheme.typography.labelSmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        letterSpacing = 4.sp
+      )
+      if (uiState.isRemoteSubscribed) {
+        Spacer(modifier = Modifier.width(8.dp))
+        androidx.compose.material3.Surface(
+          shape = MaterialTheme.shapes.small,
+          color = if (uiState.isRemoteEnded) MaterialTheme.colorScheme.surfaceVariant
+                  else MaterialTheme.colorScheme.error
+        ) {
+          Text(
+            text = if (uiState.isRemoteEnded) "FINAL" else "LIVE",
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.Bold,
+            color = if (uiState.isRemoteEnded) MaterialTheme.colorScheme.onSurfaceVariant
+                    else MaterialTheme.colorScheme.onError,
+            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+          )
+        }
+      }
+    }
 
     Spacer(modifier = Modifier.height(8.dp))
 
@@ -149,7 +171,13 @@ fun MatchScreen(
       modifier = Modifier.fillMaxWidth(),
       horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-      if (!uiState.isNameEditable) {
+      if (uiState.isRemoteSubscribed) {
+        Button(
+          onClick = viewModel::startNewMatch,
+          modifier = Modifier.weight(1f),
+          shape = MaterialTheme.shapes.large
+        ) { Text("Reset Counter") }
+      } else if (!uiState.isNameEditable) {
         Button(
           onClick = viewModel::startNewMatch,
           modifier = Modifier.weight(1f),

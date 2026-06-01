@@ -50,13 +50,15 @@ import com.example.kabaddikounter.LiveScoreService
 import com.example.kabaddikounter.data.remote.dto.RemoteMatchDto
 import com.example.kabaddikounter.viewModels.BackendTestViewModel
 import com.example.kabaddikounter.viewModels.BackendUiState
+import com.example.kabaddikounter.viewModels.ScoreViewModel
 import com.example.kabaddikounter.viewModels.SubscribeState
 import com.example.kabaddikounter.viewModels.UnsubscribeState
 
 @OptIn(ExperimentalMaterialApi::class)
 @Composable
 fun BackendTestScreen(
-  viewModel: BackendTestViewModel = viewModel()
+  viewModel: BackendTestViewModel = viewModel(),
+  scoreViewModel: ScoreViewModel
 ) {
   // ...existing code...
   val context = LocalContext.current
@@ -66,6 +68,7 @@ fun BackendTestScreen(
   val unsubscribeState by viewModel.unsubscribeState.collectAsStateWithLifecycle()
   val subscribedMatchIds by viewModel.subscribedMatchIds.collectAsStateWithLifecycle()
   val activeServiceMatchId by LiveScoreService.activeMatchId.collectAsStateWithLifecycle()
+  val scoreUiState by scoreViewModel.uiState.collectAsStateWithLifecycle()
   val pullRefreshState = rememberPullRefreshState(
     refreshing = isRefreshing,
     onRefresh = { viewModel.refresh() }
@@ -73,30 +76,50 @@ fun BackendTestScreen(
   LaunchedEffect(subscribeState) {
     when (val state = subscribeState) {
       is SubscribeState.Success -> {
+        // Subscribe pertama → langsung tampilkan di counter
+        if (subscribedMatchIds.size == 1) {
+          val match = (uiState as? BackendUiState.Success)?.matches?.find { it.id == state.matchId }
+          match?.let { scoreViewModel.loadRemoteMatch(it) }
+        }
         Toast.makeText(context, state.message, Toast.LENGTH_SHORT).show()
         viewModel.resetSubscribeState()
       }
-
       is SubscribeState.Error -> {
         Toast.makeText(context, state.message, Toast.LENGTH_LONG).show()
         viewModel.resetSubscribeState()
       }
-
       else -> Unit
     }
   }
   LaunchedEffect(unsubscribeState) {
     when (val state = unsubscribeState) {
       is UnsubscribeState.Success -> {
+        when {
+          // Tidak ada subscription tersisa → reset counter ke default
+          subscribedMatchIds.isEmpty() -> {
+            scoreViewModel.startNewMatch()
+            if (LiveScoreService.activeMatchId.value != null) {
+              context.startService(LiveScoreService.stopIntent(context))
+            }
+          }
+          // Match yang di-unsubscribe sedang ditampilkan di counter → switch ke match lain
+          state.matchId == scoreUiState.remoteMatchId -> {
+            if (LiveScoreService.activeMatchId.value == state.matchId) {
+              context.startService(LiveScoreService.stopIntent(context))
+            }
+            val nextMatch = (uiState as? BackendUiState.Success)?.matches
+              ?.find { it.id in subscribedMatchIds }
+            nextMatch?.let { scoreViewModel.loadRemoteMatch(it) }
+          }
+          // Match lain yang di-unsubscribe, counter tidak berubah
+        }
         Toast.makeText(context, state.message, Toast.LENGTH_SHORT).show()
         viewModel.resetUnsubscribeState()
       }
-
       is UnsubscribeState.Error -> {
         Toast.makeText(context, state.message, Toast.LENGTH_LONG).show()
         viewModel.resetUnsubscribeState()
       }
-
       else -> Unit
     }
   }

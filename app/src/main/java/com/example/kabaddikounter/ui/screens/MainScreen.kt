@@ -128,7 +128,7 @@ fun HomeScreen(
         )
 
         HomeTab.HISTORY -> HistoryScreen(viewModel = viewModel)
-        HomeTab.REMOTE -> BackendTestScreen()
+        HomeTab.REMOTE -> BackendTestScreen(scoreViewModel = viewModel)
         HomeTab.SETTINGS -> SettingsScreen(
           viewModel = viewModel,
           currentTheme = themeMode,

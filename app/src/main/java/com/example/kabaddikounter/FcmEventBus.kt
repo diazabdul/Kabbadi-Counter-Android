@@ -31,7 +31,16 @@ object FcmEventBus {
     )
     val scoreUpdate: SharedFlow<ScoreUpdate> = _scoreUpdate.asSharedFlow()
 
+    // replay=0: hanya event real-time, tidak replay ke collector baru (untuk in-app banner)
+    private val _scoreUpdateEvent = MutableSharedFlow<ScoreUpdate>(
+        replay = 0,
+        extraBufferCapacity = 1,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST
+    )
+    val scoreUpdateEvent: SharedFlow<ScoreUpdate> = _scoreUpdateEvent.asSharedFlow()
+
     fun emitScoreUpdate(update: ScoreUpdate) {
         _scoreUpdate.tryEmit(update)
+        _scoreUpdateEvent.tryEmit(update)
     }
 }
