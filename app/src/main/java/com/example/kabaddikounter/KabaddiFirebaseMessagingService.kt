@@ -43,6 +43,7 @@ class KabaddiFirebaseMessagingService : FirebaseMessagingService() {
                     scoreB = data["team_b_score"]?.toIntOrNull() ?: 0,
                     isMatchEnded = true
                 ))
+                FcmEventBus.notifyMatchEnded()
             }
             // Notification message (mis. dari Firebase Console test) — tampilkan saat foreground
             message.notification != null -> {

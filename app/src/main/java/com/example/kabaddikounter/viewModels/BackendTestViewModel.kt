@@ -65,6 +65,11 @@ class BackendTestViewModel(application: Application) : AndroidViewModel(applicat
       FcmEventBus.refreshSignal.collect { refresh() }
     }
 
+    // Auto-unsubscribe match yang berakhir saat MATCH_ENDED FCM diterima
+    viewModelScope.launch {
+      FcmEventBus.matchEndedEvent.collect { autoUnsubscribeEndedMatches() }
+    }
+
     // Load persisted subscribed match ids from DataStore and keep state in sync.
     viewModelScope.launch {
       getApplication<Application>().dataStore.data
@@ -156,6 +161,19 @@ class BackendTestViewModel(application: Application) : AndroidViewModel(applicat
 
   fun resetUnsubscribeState() {
     _unsubscribeState.value = UnsubscribeState.Idle
+  }
+
+  private fun autoUnsubscribeEndedMatches() {
+    val currentSubscribed = _subscribedMatchIds.value
+    if (currentSubscribed.isEmpty()) return
+    viewModelScope.launch {
+      val endedIds = runCatching { repository.fetchMatches() }
+        .getOrNull()
+        ?.filter { it.status == "END" && it.id in currentSubscribed }
+        ?.map { it.id }
+        ?: return@launch
+      endedIds.forEach { matchId -> unsubscribeFromMatch(matchId) }
+    }
   }
 
   private suspend fun getFcmToken(): String? = suspendCancellableCoroutine { cont ->

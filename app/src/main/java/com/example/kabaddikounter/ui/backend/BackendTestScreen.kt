@@ -2,6 +2,7 @@ package com.example.kabaddikounter.ui.backend
 
 import android.os.Build
 import android.widget.Toast
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -16,6 +17,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.pullrefresh.PullRefreshIndicator
 import androidx.compose.material.pullrefresh.pullRefresh
@@ -31,6 +33,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -41,9 +44,13 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.kabaddikounter.LiveScoreService
@@ -104,12 +111,24 @@ fun BackendTestScreen(
           }
           // Match yang di-unsubscribe sedang ditampilkan di counter → switch ke match lain
           state.matchId == scoreUiState.remoteMatchId -> {
-            if (LiveScoreService.activeMatchId.value == state.matchId) {
-              context.startService(LiveScoreService.stopIntent(context))
-            }
             val nextMatch = (uiState as? BackendUiState.Success)?.matches
               ?.find { it.id in subscribedMatchIds }
-            nextMatch?.let { scoreViewModel.loadRemoteMatch(it) }
+            if (LiveScoreService.activeMatchId.value == state.matchId) {
+              if (nextMatch != null) {
+                // Alihkan Cast ke match berikutnya agar activeMatch emit nextMatch
+                // → ScoreViewModel.loadRemoteMatch(nextMatch) terpanggil via observer
+                val intent = LiveScoreService.startIntent(context, nextMatch)
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                  context.startForegroundService(intent)
+                } else {
+                  context.startService(intent)
+                }
+              } else {
+                context.startService(LiveScoreService.stopIntent(context))
+              }
+            } else {
+              nextMatch?.let { scoreViewModel.loadRemoteMatch(it) }
+            }
           }
           // Match lain yang di-unsubscribe, counter tidak berubah
         }
@@ -201,39 +220,95 @@ private fun RemoteMatchItem(
   onToggleService: () -> Unit
 ) {
   val isLive = match.status == "LIVE"
+  val teamAWins = match.teamAScore > match.teamBScore
+  val teamBWins = match.teamBScore > match.teamAScore
+  val winnerColor = Color(0xFFC6FF00)
+  val loserColor = MaterialTheme.colorScheme.onSurfaceVariant
+
   Card(
     modifier = Modifier
       .fillMaxWidth()
       .padding(bottom = 8.dp),
+    shape = MaterialTheme.shapes.large,
     colors = CardDefaults.cardColors(
-      containerColor = if (isSubscribed) {
-        MaterialTheme.colorScheme.primaryContainer
-      } else {
-        MaterialTheme.colorScheme.surfaceContainerHigh
-      }
+      containerColor = MaterialTheme.colorScheme.surfaceContainer
     )
   ) {
-    Column(modifier = Modifier.padding(12.dp)) {
+    Column(
+      modifier = Modifier
+        .fillMaxWidth()
+        .padding(horizontal = 16.dp, vertical = 14.dp)
+    ) {
+      // Header: match ID + status badge
       Row(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
+        verticalAlignment = Alignment.Top,
+        horizontalArrangement = Arrangement.SpaceBetween
       ) {
         Text(
-          text = "${match.teamAName} vs ${match.teamBName}",
-          fontWeight = FontWeight.Bold,
-          modifier = Modifier.weight(1f)
+          text = "#%03d".format(match.id),
+          style = MaterialTheme.typography.labelMedium,
+          fontFamily = FontFamily.Monospace,
+          color = MaterialTheme.colorScheme.onSurfaceVariant,
+          letterSpacing = 1.sp
         )
-        StatusBadge(status = match.status)
+        RemoteStatusBadge(status = match.status)
       }
-      Spacer(modifier = Modifier.height(4.dp))
-      Text(
-        text = "${match.teamAScore}  —  ${match.teamBScore}",
-        style = MaterialTheme.typography.titleLarge,
-        fontWeight = FontWeight.Bold
-      )
+
+      Spacer(modifier = Modifier.height(12.dp))
+
+      // Scores
+      Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically
+      ) {
+        Column(modifier = Modifier.weight(1f)) {
+          Text(
+            text = match.teamAName,
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = if (teamAWins) FontWeight.Bold else FontWeight.Normal,
+            color = MaterialTheme.colorScheme.onSurface
+          )
+          Text(
+            text = match.teamAScore.toString(),
+            fontSize = 40.sp,
+            fontWeight = FontWeight.Bold,
+            color = if (teamAWins) winnerColor else loserColor
+          )
+        }
+        Text(
+          text = "VS",
+          style = MaterialTheme.typography.labelMedium,
+          color = MaterialTheme.colorScheme.onSurfaceVariant,
+          modifier = Modifier.padding(horizontal = 8.dp)
+        )
+        Column(
+          modifier = Modifier.weight(1f),
+          horizontalAlignment = Alignment.End
+        ) {
+          Text(
+            text = match.teamBName,
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = if (teamBWins) FontWeight.Bold else FontWeight.Normal,
+            color = MaterialTheme.colorScheme.onSurface,
+            textAlign = TextAlign.End
+          )
+          Text(
+            text = match.teamBScore.toString(),
+            fontSize = 40.sp,
+            fontWeight = FontWeight.Bold,
+            color = if (teamBWins) winnerColor else loserColor,
+            textAlign = TextAlign.End
+          )
+        }
+      }
+
+      // Action buttons for LIVE matches
       if (isLive) {
-        Spacer(modifier = Modifier.height(8.dp))
+        HorizontalDivider(
+          modifier = Modifier.padding(vertical = 10.dp),
+          color = MaterialTheme.colorScheme.outlineVariant
+        )
         if (isSubscribed) {
           Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -289,6 +364,8 @@ private fun RemoteMatchItem(
           Button(
             onClick = onSubscribe,
             enabled = !isSubscribing,
+            modifier = Modifier.fillMaxWidth(),
+            shape = MaterialTheme.shapes.large,
             colors = ButtonDefaults.buttonColors(
               containerColor = MaterialTheme.colorScheme.primary
             )
@@ -317,16 +394,26 @@ private fun RemoteMatchItem(
 }
 
 @Composable
-private fun StatusBadge(status: String) {
-  val color = when (status) {
+private fun RemoteStatusBadge(status: String) {
+  val borderColor = when (status) {
     "LIVE" -> MaterialTheme.colorScheme.error
-    "END" -> MaterialTheme.colorScheme.outline
-    else -> MaterialTheme.colorScheme.onSurfaceVariant
+    else -> MaterialTheme.colorScheme.onSurface
   }
-  Text(
-    text = status,
-    style = MaterialTheme.typography.labelSmall,
-    color = color,
-    fontWeight = FontWeight.Bold
-  )
+  val textColor = when (status) {
+    "LIVE" -> MaterialTheme.colorScheme.error
+    else -> MaterialTheme.colorScheme.onSurface
+  }
+  Box(
+    modifier = Modifier
+      .border(width = 1.dp, color = borderColor, shape = RoundedCornerShape(50))
+      .padding(horizontal = 10.dp, vertical = 4.dp)
+  ) {
+    Text(
+      text = status,
+      style = MaterialTheme.typography.labelSmall,
+      fontWeight = FontWeight.Bold,
+      color = textColor,
+      letterSpacing = 0.5.sp
+    )
+  }
 }

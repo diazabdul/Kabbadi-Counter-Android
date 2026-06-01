@@ -43,4 +43,16 @@ object FcmEventBus {
         _scoreUpdate.tryEmit(update)
         _scoreUpdateEvent.tryEmit(update)
     }
+
+    // replay=0: hanya event real-time saat match berakhir, untuk trigger auto-unsubscribe
+    private val _matchEndedEvent = MutableSharedFlow<Unit>(
+        replay = 0,
+        extraBufferCapacity = 1,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST
+    )
+    val matchEndedEvent: SharedFlow<Unit> = _matchEndedEvent.asSharedFlow()
+
+    fun notifyMatchEnded() {
+        _matchEndedEvent.tryEmit(Unit)
+    }
 }
