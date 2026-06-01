@@ -25,10 +25,24 @@ class KabaddiFirebaseMessagingService : FirebaseMessagingService() {
             data["type"] == "SCORE_UPDATED" -> {
                 showScoreNotification(data)
                 FcmEventBus.notifyRefresh()
+                FcmEventBus.emitScoreUpdate(FcmEventBus.ScoreUpdate(
+                    teamAName = data["team_a_name"] ?: "Team A",
+                    teamBName = data["team_b_name"] ?: "Team B",
+                    scoreA = data["team_a_score"]?.toIntOrNull() ?: 0,
+                    scoreB = data["team_b_score"]?.toIntOrNull() ?: 0,
+                    isMatchEnded = false
+                ))
             }
             data["type"] == "MATCH_ENDED" -> {
                 showMatchEndedNotification(data)
                 FcmEventBus.notifyRefresh()
+                FcmEventBus.emitScoreUpdate(FcmEventBus.ScoreUpdate(
+                    teamAName = data["team_a_name"] ?: "Team A",
+                    teamBName = data["team_b_name"] ?: "Team B",
+                    scoreA = data["team_a_score"]?.toIntOrNull() ?: 0,
+                    scoreB = data["team_b_score"]?.toIntOrNull() ?: 0,
+                    isMatchEnded = true
+                ))
             }
             // Notification message (mis. dari Firebase Console test) — tampilkan saat foreground
             message.notification != null -> {
@@ -38,6 +52,8 @@ class KabaddiFirebaseMessagingService : FirebaseMessagingService() {
                     title = n.title ?: "Kabaddi Kounter",
                     body  = n.body  ?: ""
                 )
+                // Trigger service refresh agar foreground service re-fetch skor terbaru dari API
+                FcmEventBus.notifyRefresh()
             }
         }
     }

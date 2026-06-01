@@ -15,4 +15,23 @@ object FcmEventBus {
     fun notifyRefresh() {
         _refreshSignal.tryEmit(Unit)
     }
+
+    data class ScoreUpdate(
+        val teamAName: String,
+        val teamBName: String,
+        val scoreA: Int,
+        val scoreB: Int,
+        val isMatchEnded: Boolean = false
+    )
+
+    private val _scoreUpdate = MutableSharedFlow<ScoreUpdate>(
+        replay = 1,
+        extraBufferCapacity = 1,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST
+    )
+    val scoreUpdate: SharedFlow<ScoreUpdate> = _scoreUpdate.asSharedFlow()
+
+    fun emitScoreUpdate(update: ScoreUpdate) {
+        _scoreUpdate.tryEmit(update)
+    }
 }

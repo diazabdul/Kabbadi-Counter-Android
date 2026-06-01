@@ -1,5 +1,6 @@
 package com.example.kabaddikounter.ui.backend
 
+import android.os.Build
 import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -20,6 +21,8 @@ import androidx.compose.material.pullrefresh.PullRefreshIndicator
 import androidx.compose.material.pullrefresh.pullRefresh
 import androidx.compose.material.pullrefresh.rememberPullRefreshState
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Cast
+import androidx.compose.material.icons.filled.CastConnected
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.NotificationsOff
@@ -29,6 +32,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
@@ -42,6 +46,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.kabaddikounter.LiveScoreService
 import com.example.kabaddikounter.data.remote.dto.RemoteMatchDto
 import com.example.kabaddikounter.viewModels.BackendTestViewModel
 import com.example.kabaddikounter.viewModels.BackendUiState
@@ -60,6 +65,7 @@ fun BackendTestScreen(
   val subscribeState by viewModel.subscribeState.collectAsStateWithLifecycle()
   val unsubscribeState by viewModel.unsubscribeState.collectAsStateWithLifecycle()
   val subscribedMatchIds by viewModel.subscribedMatchIds.collectAsStateWithLifecycle()
+  val activeServiceMatchId by LiveScoreService.activeMatchId.collectAsStateWithLifecycle()
   val pullRefreshState = rememberPullRefreshState(
     refreshing = isRefreshing,
     onRefresh = { viewModel.refresh() }
@@ -132,8 +138,21 @@ fun BackendTestScreen(
               isSubscribed = match.id in subscribedMatchIds,
               isSubscribing = isSubscribing,
               isUnsubscribing = isUnsubscribing,
+              isServiceActive = activeServiceMatchId == match.id,
               onSubscribe = { viewModel.subscribeToMatch(match.id) },
-              onUnsubscribe = { viewModel.unsubscribeFromMatch(match.id) }
+              onUnsubscribe = { viewModel.unsubscribeFromMatch(match.id) },
+              onToggleService = {
+                if (activeServiceMatchId == match.id) {
+                  context.startService(LiveScoreService.stopIntent(context))
+                } else {
+                  val intent = LiveScoreService.startIntent(context, match)
+                  if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    context.startForegroundService(intent)
+                  } else {
+                    context.startService(intent)
+                  }
+                }
+              }
             )
           }
         }
@@ -153,8 +172,10 @@ private fun RemoteMatchItem(
   isSubscribed: Boolean,
   isSubscribing: Boolean,
   isUnsubscribing: Boolean,
+  isServiceActive: Boolean,
   onSubscribe: () -> Unit,
-  onUnsubscribe: () -> Unit
+  onUnsubscribe: () -> Unit,
+  onToggleService: () -> Unit
 ) {
   val isLive = match.status == "LIVE"
   Card(
@@ -208,6 +229,14 @@ private fun RemoteMatchItem(
               color = MaterialTheme.colorScheme.primary,
               modifier = Modifier.weight(1f)
             )
+            IconButton(onClick = onToggleService) {
+              Icon(
+                imageVector = if (isServiceActive) Icons.Filled.CastConnected else Icons.Filled.Cast,
+                contentDescription = if (isServiceActive) "Stop live score" else "Start live score",
+                tint = if (isServiceActive) MaterialTheme.colorScheme.primary
+                       else MaterialTheme.colorScheme.onSurfaceVariant
+              )
+            }
             OutlinedButton(
               onClick = onUnsubscribe,
               enabled = !isUnsubscribing,
