@@ -42,7 +42,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -52,7 +51,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.kabaddikounter.data.MatchRecord
+import com.example.kabaddikounter.data.STATUS_LOCAL_DRAFT
 import com.example.kabaddikounter.data.STATUS_LOCAL_FINISHED
+import com.example.kabaddikounter.ui.theme.tokens.historyScreenTokens
 import com.example.kabaddikounter.viewModels.ScoreViewModel
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
@@ -62,15 +63,19 @@ import java.util.Locale
 import kotlin.math.roundToInt
 
 @Composable
-fun HistoryScreen(viewModel: ScoreViewModel) {
+fun HistoryScreen(
+  viewModel: ScoreViewModel,
+  onOpenOngoingMatch: () -> Unit = {}
+) {
   val allMatches by viewModel.allMatches.collectAsStateWithLifecycle(initialValue = emptyList())
+  val tokens = historyScreenTokens(MaterialTheme.colorScheme)
 
   if (allMatches.isEmpty()) {
     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
       Text(
         text = "No match history yet",
         style = MaterialTheme.typography.bodyLarge,
-        color = MaterialTheme.colorScheme.onSurfaceVariant
+        color = tokens.emptyStateText
       )
     }
   } else {
@@ -83,7 +88,13 @@ fun HistoryScreen(viewModel: ScoreViewModel) {
         MatchHistoryItem(
           match = match,
           onDelete = { viewModel.deleteMatch(match) },
-          onLoad = { viewModel.loadMatch(match) }
+          onLoad = {
+            viewModel.loadMatch(match)
+            if (match.status == STATUS_LOCAL_DRAFT) {
+              onOpenOngoingMatch()
+            }
+          },
+          tokens = tokens
         )
       }
     }
@@ -94,16 +105,21 @@ fun HistoryScreen(viewModel: ScoreViewModel) {
 private fun MatchHistoryItem(
   match: MatchRecord,
   onDelete: () -> Unit,
-  onLoad: () -> Unit
+  onLoad: () -> Unit,
+  tokens: com.example.kabaddikounter.ui.theme.tokens.HistoryScreenTokens
 ) {
-  SwipeToRevealDelete(onDeleteConfirmed = onDelete) {
-    MatchCard(match = match, onLoad = onLoad)
+  SwipeToRevealDelete(
+    onDeleteConfirmed = onDelete,
+    tokens = tokens
+  ) {
+    MatchCard(match = match, onLoad = onLoad, tokens = tokens)
   }
 }
 
 @Composable
 private fun SwipeToRevealDelete(
   onDeleteConfirmed: () -> Unit,
+  tokens: com.example.kabaddikounter.ui.theme.tokens.HistoryScreenTokens,
   content: @Composable () -> Unit
 ) {
   var showDialog by remember { mutableStateOf(false) }
@@ -161,14 +177,14 @@ private fun SwipeToRevealDelete(
         modifier = Modifier
           .fillMaxHeight()
           .width(revealWidthDp)
-          .background(MaterialTheme.colorScheme.errorContainer, MaterialTheme.shapes.large)
+          .background(tokens.deleteRevealContainer, MaterialTheme.shapes.large)
           .clickable { showDialog = true },
         contentAlignment = Alignment.Center
       ) {
         Icon(
           Icons.Default.Delete,
           contentDescription = "Hapus pertandingan",
-          tint = MaterialTheme.colorScheme.onErrorContainer
+          tint = tokens.deleteRevealContent
         )
       }
     }
@@ -208,13 +224,14 @@ private fun SwipeToRevealDelete(
 }
 
 @Composable
-private fun MatchCard(match: MatchRecord, onLoad: () -> Unit) {
+private fun MatchCard(
+  match: MatchRecord,
+  onLoad: () -> Unit,
+  tokens: com.example.kabaddikounter.ui.theme.tokens.HistoryScreenTokens
+) {
   val isFinished = match.status == STATUS_LOCAL_FINISHED
   val teamAWins = match.scoreA > match.scoreB
   val teamBWins = match.scoreB > match.scoreA
-
-  val winnerColor = Color(0xFFC6FF00)
-  val loserColor = MaterialTheme.colorScheme.onSurfaceVariant
 
   val formattedDateTime = remember(match.timestamp) { formatMatchDateTime(match.timestamp) }
 
@@ -223,7 +240,7 @@ private fun MatchCard(match: MatchRecord, onLoad: () -> Unit) {
     modifier = Modifier.fillMaxWidth(),
     shape = MaterialTheme.shapes.large,
     colors = CardDefaults.cardColors(
-      containerColor = MaterialTheme.colorScheme.surfaceContainer
+      containerColor = tokens.cardContainer
     )
   ) {
     Column(
@@ -241,16 +258,16 @@ private fun MatchCard(match: MatchRecord, onLoad: () -> Unit) {
             text = "#%03d".format(match.id),
             style = MaterialTheme.typography.labelMedium,
             fontFamily = FontFamily.Monospace,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            color = tokens.cardMetaText,
             letterSpacing = 1.sp
           )
           Text(
             text = formattedDateTime,
             style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            color = tokens.cardMetaText
           )
         }
-        StatusBadge(isFinished)
+        StatusBadge(isFinished, tokens)
       }
 
       Spacer(modifier = Modifier.height(12.dp))
@@ -264,20 +281,20 @@ private fun MatchCard(match: MatchRecord, onLoad: () -> Unit) {
             text = match.teamAName,
             style = MaterialTheme.typography.titleMedium,
             fontWeight = if (teamAWins) FontWeight.Bold else FontWeight.Normal,
-            color = MaterialTheme.colorScheme.onSurface
+            color = tokens.cardTitleText
           )
           Text(
             text = match.scoreA.toString(),
             fontSize = 40.sp,
             fontWeight = FontWeight.Bold,
-            color = if (teamAWins) winnerColor else loserColor
+            color = if (teamAWins) tokens.winnerScore else tokens.loserScore
           )
         }
 
         Text(
           text = "VS",
           style = MaterialTheme.typography.labelMedium,
-          color = MaterialTheme.colorScheme.onSurfaceVariant,
+          color = tokens.cardMutedText,
           modifier = Modifier.padding(horizontal = 8.dp)
         )
 
@@ -289,14 +306,14 @@ private fun MatchCard(match: MatchRecord, onLoad: () -> Unit) {
             text = match.teamBName,
             style = MaterialTheme.typography.titleMedium,
             fontWeight = if (teamBWins) FontWeight.Bold else FontWeight.Normal,
-            color = MaterialTheme.colorScheme.onSurface,
+            color = tokens.cardTitleText,
             textAlign = TextAlign.End
           )
           Text(
             text = match.scoreB.toString(),
             fontSize = 40.sp,
             fontWeight = FontWeight.Bold,
-            color = if (teamBWins) winnerColor else loserColor,
+            color = if (teamBWins) tokens.winnerScore else tokens.loserScore,
             textAlign = TextAlign.End
           )
         }
@@ -306,12 +323,15 @@ private fun MatchCard(match: MatchRecord, onLoad: () -> Unit) {
 }
 
 @Composable
-private fun StatusBadge(isFinished: Boolean) {
+private fun StatusBadge(
+  isFinished: Boolean,
+  tokens: com.example.kabaddikounter.ui.theme.tokens.HistoryScreenTokens
+) {
   Box(
     modifier = Modifier
       .border(
         width = 1.dp,
-        color = MaterialTheme.colorScheme.onSurface,
+        color = tokens.statusBadgeBorder,
         shape = RoundedCornerShape(50)
       )
       .padding(horizontal = 10.dp, vertical = 4.dp)
@@ -320,7 +340,7 @@ private fun StatusBadge(isFinished: Boolean) {
       text = if (isFinished) "Finished" else "Ongoing",
       style = MaterialTheme.typography.labelSmall,
       fontWeight = FontWeight.Bold,
-      color = MaterialTheme.colorScheme.onSurface,
+      color = tokens.statusBadgeText,
       letterSpacing = 0.5.sp
     )
   }

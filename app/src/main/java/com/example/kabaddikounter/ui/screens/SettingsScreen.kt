@@ -43,6 +43,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.kabaddikounter.BuildConfig
+import com.example.kabaddikounter.ui.theme.tokens.SettingsScreenTokens
+import com.example.kabaddikounter.ui.theme.tokens.settingsScreenTokens
 import com.example.kabaddikounter.viewModels.ScoreViewModel
 
 @Composable
@@ -53,6 +55,7 @@ fun SettingsScreen(
 ) {
     val allMatches by viewModel.allMatches.collectAsStateWithLifecycle(initialValue = emptyList())
     var showClearDialog by remember { mutableStateOf(false) }
+    val tokens = settingsScreenTokens(MaterialTheme.colorScheme)
 
     if (showClearDialog) {
         AlertDialog(
@@ -66,7 +69,7 @@ fun SettingsScreen(
                         showClearDialog = false
                     },
                     colors = ButtonDefaults.textButtonColors(
-                        contentColor = MaterialTheme.colorScheme.error
+                        contentColor = tokens.destructiveText
                     )
                 ) { Text("Clear") }
             },
@@ -84,45 +87,49 @@ fun SettingsScreen(
         verticalArrangement = Arrangement.SpaceBetween
     ) {
         Column {
-            SectionLabel("Theme")
+            SectionLabel("Theme", tokens)
 
             ThemeSegmentedControl(
                 selected = currentTheme,
-                onSelect = onThemeChange
+                onSelect = onThemeChange,
+                tokens = tokens
             )
 
             Spacer(modifier = Modifier.height(20.dp))
 
-            SectionLabel("Data")
+            SectionLabel("Data", tokens)
 
             Card(
                 shape = MaterialTheme.shapes.large,
                 colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainer
+                    containerColor = tokens.cardContainer
                 ),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 SettingsItem(
                     title = "Export all as JSON",
                     subtitle = "${allMatches.size} matches",
+                    tokens = tokens,
+                    titleColor = tokens.primaryText,
                     onClick = { viewModel.downloadHistoryAsJSON() }
                 )
 
                 HorizontalDivider(
                     modifier = Modifier.padding(horizontal = 16.dp),
-                    color = MaterialTheme.colorScheme.outlineVariant
+                    color = tokens.divider
                 )
 
                 SettingsItem(
                     title = "Clear history",
                     subtitle = "This cannot be undone",
-                    titleColor = MaterialTheme.colorScheme.error,
+                    titleColor = tokens.destructiveText,
+                    tokens = tokens,
                     onClick = { showClearDialog = true }
                 )
 
                 HorizontalDivider(
                     modifier = Modifier.padding(horizontal = 16.dp),
-                    color = MaterialTheme.colorScheme.outlineVariant
+                    color = tokens.divider
                 )
 
                 Column(
@@ -133,13 +140,13 @@ fun SettingsScreen(
                     Text(
                         text = "Base URL",
                         style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurface
+                        color = tokens.primaryText
                     )
                     Spacer(modifier = Modifier.height(2.dp))
                     Text(
                         text = BuildConfig.BASE_URL,
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = tokens.secondaryText
                     )
                 }
             }
@@ -154,7 +161,7 @@ fun SettingsScreen(
             Text(
                 text = "KABADDI KOUNTER · v${BuildConfig.VERSION_NAME} · IF5230",
                 style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = tokens.footerText,
                 textAlign = TextAlign.Center,
                 fontWeight = FontWeight.Medium
             )
@@ -165,7 +172,8 @@ fun SettingsScreen(
 @Composable
 private fun ThemeSegmentedControl(
     selected: String,
-    onSelect: (String) -> Unit
+    onSelect: (String) -> Unit,
+    tokens: SettingsScreenTokens
 ) {
     data class ThemeOption(val value: String, val label: String, val icon: ImageVector)
 
@@ -179,7 +187,7 @@ private fun ThemeSegmentedControl(
         modifier = Modifier
             .fillMaxWidth()
             .clip(MaterialTheme.shapes.large)
-            .background(MaterialTheme.colorScheme.surfaceContainer)
+            .background(tokens.segmentedTrack)
             .padding(6.dp)
     ) {
         Row(modifier = Modifier.fillMaxWidth()) {
@@ -190,7 +198,7 @@ private fun ThemeSegmentedControl(
                         .weight(1f)
                         .clip(MaterialTheme.shapes.medium)
                         .background(
-                            if (isSelected) MaterialTheme.colorScheme.primary
+                            if (isSelected) tokens.segmentedSelectedContainer
                             else androidx.compose.ui.graphics.Color.Transparent
                         )
                         .clickable { onSelect(option.value) }
@@ -202,16 +210,16 @@ private fun ThemeSegmentedControl(
                             imageVector = option.icon,
                             contentDescription = option.label,
                             modifier = Modifier.size(20.dp),
-                            tint = if (isSelected) MaterialTheme.colorScheme.onPrimary
-                            else MaterialTheme.colorScheme.onSurfaceVariant
+                            tint = if (isSelected) tokens.segmentedSelectedContent
+                            else tokens.segmentedUnselectedContent
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
                             text = option.label,
                             style = MaterialTheme.typography.labelMedium,
                             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                            color = if (isSelected) MaterialTheme.colorScheme.onPrimary
-                            else MaterialTheme.colorScheme.onSurfaceVariant
+                            color = if (isSelected) tokens.segmentedSelectedContent
+                            else tokens.segmentedUnselectedContent
                         )
                     }
                 }
@@ -221,11 +229,11 @@ private fun ThemeSegmentedControl(
 }
 
 @Composable
-private fun SectionLabel(text: String) {
+ private fun SectionLabel(text: String, tokens: SettingsScreenTokens) {
     Text(
         text = text.uppercase(),
         style = MaterialTheme.typography.labelSmall,
-        color = MaterialTheme.colorScheme.primary,
+        color = tokens.sectionLabel,
         fontWeight = FontWeight.Bold,
         modifier = Modifier.padding(start = 4.dp, bottom = 6.dp)
     )
@@ -235,6 +243,7 @@ private fun SectionLabel(text: String) {
 private fun SettingsItem(
     title: String,
     subtitle: String? = null,
+    tokens: SettingsScreenTokens,
     titleColor: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.onSurface,
     onClick: () -> Unit
 ) {
@@ -256,14 +265,14 @@ private fun SettingsItem(
                 Text(
                     text = subtitle,
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = tokens.secondaryText
                 )
             }
         }
         Icon(
             imageVector = Icons.AutoMirrored.Filled.ArrowForward,
             contentDescription = null,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant
+            tint = tokens.trailingIcon
         )
     }
 }

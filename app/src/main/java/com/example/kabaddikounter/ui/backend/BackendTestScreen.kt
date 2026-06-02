@@ -44,7 +44,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -55,6 +54,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.kabaddikounter.LiveScoreService
 import com.example.kabaddikounter.data.remote.dto.RemoteMatchDto
+import com.example.kabaddikounter.ui.theme.tokens.backendScreenTokens
 import com.example.kabaddikounter.viewModels.BackendTestViewModel
 import com.example.kabaddikounter.viewModels.BackendUiState
 import com.example.kabaddikounter.viewModels.ScoreViewModel
@@ -69,6 +69,7 @@ fun BackendTestScreen(
 ) {
   // ...existing code...
   val context = LocalContext.current
+  val tokens = backendScreenTokens(MaterialTheme.colorScheme)
   val uiState by viewModel.uiState.collectAsStateWithLifecycle()
   val isRefreshing by viewModel.isRefreshing.collectAsStateWithLifecycle()
   val subscribeState by viewModel.subscribeState.collectAsStateWithLifecycle()
@@ -157,13 +158,13 @@ fun BackendTestScreen(
 
       BackendUiState.Empty -> {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-          Text("Tidak ada match dari server")
+          Text("Tidak ada match dari server", color = tokens.emptyStateText)
         }
       }
 
       is BackendUiState.Error -> {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-          Text("Error: ${state.message}")
+          Text("Error: ${state.message}", color = tokens.errorStateText)
         }
       }
 
@@ -181,6 +182,7 @@ fun BackendTestScreen(
               isSubscribing = isSubscribing,
               isUnsubscribing = isUnsubscribing,
               isServiceActive = activeServiceMatchId == match.id,
+              tokens = tokens,
               onSubscribe = { viewModel.subscribeToMatch(match.id) },
               onUnsubscribe = { viewModel.unsubscribeFromMatch(match.id) },
               onToggleService = {
@@ -215,6 +217,7 @@ private fun RemoteMatchItem(
   isSubscribing: Boolean,
   isUnsubscribing: Boolean,
   isServiceActive: Boolean,
+  tokens: com.example.kabaddikounter.ui.theme.tokens.BackendScreenTokens,
   onSubscribe: () -> Unit,
   onUnsubscribe: () -> Unit,
   onToggleService: () -> Unit
@@ -222,8 +225,6 @@ private fun RemoteMatchItem(
   val isLive = match.status == "LIVE"
   val teamAWins = match.teamAScore > match.teamBScore
   val teamBWins = match.teamBScore > match.teamAScore
-  val winnerColor = Color(0xFFC6FF00)
-  val loserColor = MaterialTheme.colorScheme.onSurfaceVariant
 
   Card(
     modifier = Modifier
@@ -231,7 +232,7 @@ private fun RemoteMatchItem(
       .padding(bottom = 8.dp),
     shape = MaterialTheme.shapes.large,
     colors = CardDefaults.cardColors(
-      containerColor = MaterialTheme.colorScheme.surfaceContainer
+      containerColor = tokens.cardContainer
     )
   ) {
     Column(
@@ -249,10 +250,10 @@ private fun RemoteMatchItem(
           text = "#%03d".format(match.id),
           style = MaterialTheme.typography.labelMedium,
           fontFamily = FontFamily.Monospace,
-          color = MaterialTheme.colorScheme.onSurfaceVariant,
+          color = tokens.cardMetaText,
           letterSpacing = 1.sp
         )
-        RemoteStatusBadge(status = match.status)
+        RemoteStatusBadge(status = match.status, tokens = tokens)
       }
 
       Spacer(modifier = Modifier.height(12.dp))
@@ -267,19 +268,19 @@ private fun RemoteMatchItem(
             text = match.teamAName,
             style = MaterialTheme.typography.titleMedium,
             fontWeight = if (teamAWins) FontWeight.Bold else FontWeight.Normal,
-            color = MaterialTheme.colorScheme.onSurface
+            color = tokens.cardTitleText
           )
           Text(
             text = match.teamAScore.toString(),
             fontSize = 40.sp,
             fontWeight = FontWeight.Bold,
-            color = if (teamAWins) winnerColor else loserColor
+            color = if (teamAWins) tokens.winnerScore else tokens.loserScore
           )
         }
         Text(
           text = "VS",
           style = MaterialTheme.typography.labelMedium,
-          color = MaterialTheme.colorScheme.onSurfaceVariant,
+          color = tokens.cardMutedText,
           modifier = Modifier.padding(horizontal = 8.dp)
         )
         Column(
@@ -290,14 +291,14 @@ private fun RemoteMatchItem(
             text = match.teamBName,
             style = MaterialTheme.typography.titleMedium,
             fontWeight = if (teamBWins) FontWeight.Bold else FontWeight.Normal,
-            color = MaterialTheme.colorScheme.onSurface,
+            color = tokens.cardTitleText,
             textAlign = TextAlign.End
           )
           Text(
             text = match.teamBScore.toString(),
             fontSize = 40.sp,
             fontWeight = FontWeight.Bold,
-            color = if (teamBWins) winnerColor else loserColor,
+            color = if (teamBWins) tokens.winnerScore else tokens.loserScore,
             textAlign = TextAlign.End
           )
         }
@@ -307,7 +308,7 @@ private fun RemoteMatchItem(
       if (isLive) {
         HorizontalDivider(
           modifier = Modifier.padding(vertical = 10.dp),
-          color = MaterialTheme.colorScheme.outlineVariant
+          color = tokens.divider
         )
         if (isSubscribed) {
           Row(
@@ -317,14 +318,14 @@ private fun RemoteMatchItem(
             Icon(
               imageVector = Icons.Filled.CheckCircle,
               contentDescription = null,
-              tint = MaterialTheme.colorScheme.primary,
+              tint = MaterialTheme.colorScheme.onBackground,
               modifier = Modifier.size(16.dp)
             )
             Spacer(modifier = Modifier.width(4.dp))
             Text(
               text = "Subscribed",
               style = MaterialTheme.typography.labelMedium,
-              color = MaterialTheme.colorScheme.primary,
+              color = MaterialTheme.colorScheme.onBackground,
               modifier = Modifier.weight(1f)
             )
             IconButton(onClick = onToggleService) {
@@ -394,14 +395,17 @@ private fun RemoteMatchItem(
 }
 
 @Composable
-private fun RemoteStatusBadge(status: String) {
+private fun RemoteStatusBadge(
+  status: String,
+  tokens: com.example.kabaddikounter.ui.theme.tokens.BackendScreenTokens
+) {
   val borderColor = when (status) {
-    "LIVE" -> MaterialTheme.colorScheme.error
-    else -> MaterialTheme.colorScheme.onSurface
+    "LIVE" -> tokens.statusBadgeLiveBorder
+    else -> tokens.statusBadgeDefaultBorder
   }
   val textColor = when (status) {
-    "LIVE" -> MaterialTheme.colorScheme.error
-    else -> MaterialTheme.colorScheme.onSurface
+    "LIVE" -> tokens.statusBadgeLiveText
+    else -> tokens.statusBadgeDefaultText
   }
   Box(
     modifier = Modifier

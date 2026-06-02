@@ -127,7 +127,10 @@ fun HomeScreen(
           viewModel = viewModel
         )
 
-        HomeTab.HISTORY -> HistoryScreen(viewModel = viewModel)
+        HomeTab.HISTORY -> HistoryScreen(
+          viewModel = viewModel,
+          onOpenOngoingMatch = { selectedTab = HomeTab.MATCH }
+        )
         HomeTab.REMOTE -> BackendTestScreen(scoreViewModel = viewModel)
         HomeTab.SETTINGS -> SettingsScreen(
           viewModel = viewModel,
