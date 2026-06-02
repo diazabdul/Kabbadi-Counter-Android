@@ -28,7 +28,9 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -44,6 +46,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.kabaddikounter.ui.theme.tokens.matchScreenTokens
 import com.example.kabaddikounter.viewModels.ScoreViewModel
 
 @Composable
@@ -52,6 +55,9 @@ fun MatchScreen(
 ) {
   val uiState by viewModel.uiState.collectAsStateWithLifecycle()
   var showFinishDialog by remember { mutableStateOf(false) }
+  val tokens = matchScreenTokens(
+    colorScheme = MaterialTheme.colorScheme,
+  )
 
 
   if (showFinishDialog) {
@@ -91,6 +97,15 @@ fun MatchScreen(
           enabled = uiState.isNameEditable,
           singleLine = true,
           label = { Text("Team A") },
+          colors = OutlinedTextFieldDefaults.colors(
+            focusedTextColor = tokens.inputText,
+            unfocusedTextColor = tokens.inputText,
+            focusedLabelColor = tokens.inputFocusedLabel,
+            unfocusedLabelColor = tokens.inputLabel,
+            cursorColor = tokens.inputCursor,
+            focusedBorderColor = tokens.inputFocusedBorder,
+            unfocusedBorderColor = tokens.inputUnfocusedBorder,
+          ),
           keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
           modifier = Modifier.weight(1f),
           shape = MaterialTheme.shapes.medium
@@ -102,6 +117,15 @@ fun MatchScreen(
           enabled = uiState.isNameEditable,
           singleLine = true,
           label = { Text("Team B") },
+          colors = OutlinedTextFieldDefaults.colors(
+            focusedTextColor = tokens.inputText,
+            unfocusedTextColor = tokens.inputText,
+            focusedLabelColor = tokens.inputFocusedLabel,
+            unfocusedLabelColor = tokens.inputLabel,
+            cursorColor = tokens.inputCursor,
+            focusedBorderColor = tokens.inputFocusedBorder,
+            unfocusedBorderColor = tokens.inputUnfocusedBorder,
+          ),
           keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
           modifier = Modifier.weight(1f),
           shape = MaterialTheme.shapes.medium
@@ -117,9 +141,15 @@ fun MatchScreen(
       onPlus = { viewModel.incrementScoreA(2) },
       scoreEnabled = uiState.isScoreEditable,
       colors = CardDefaults.cardColors(
-        containerColor = MaterialTheme.colorScheme.primary
+        containerColor = tokens.primaryCardContainer
       ),
-      isFirst = true
+      titleColor = tokens.primaryCardTitle,
+      scoreColor = tokens.primaryCardScore,
+      outlineButtonBorderColor = tokens.primaryCardOutlineButtonBorder,
+      outlineButtonContentColor = tokens.primaryCardOutlineButtonContent,
+      filledButtonContainerColor = tokens.primaryCardFilledButtonContainer,
+      filledButtonContentColor = tokens.primaryCardFilledButtonContent,
+      isPrimaryCard = true,
     )
 
     Spacer(modifier = Modifier.height(8.dp))
@@ -137,17 +167,17 @@ fun MatchScreen(
       )
       if (uiState.isRemoteSubscribed) {
         Spacer(modifier = Modifier.width(8.dp))
-        androidx.compose.material3.Surface(
+        Surface(
           shape = MaterialTheme.shapes.small,
-          color = if (uiState.isRemoteEnded) MaterialTheme.colorScheme.surfaceVariant
-                  else MaterialTheme.colorScheme.error
+          color = if (uiState.isRemoteEnded) tokens.finalBadgeContainer
+                  else tokens.liveBadgeContainer
         ) {
           Text(
             text = if (uiState.isRemoteEnded) "FINAL" else "LIVE",
             style = MaterialTheme.typography.labelSmall,
             fontWeight = FontWeight.Bold,
-            color = if (uiState.isRemoteEnded) MaterialTheme.colorScheme.onSurfaceVariant
-                    else MaterialTheme.colorScheme.onError,
+            color = if (uiState.isRemoteEnded) tokens.finalBadgeContent
+                    else tokens.liveBadgeContent,
             modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
           )
         }
@@ -161,7 +191,16 @@ fun MatchScreen(
       score = uiState.scoreB,
       onMinus = { viewModel.incrementScoreB(1) },
       onPlus = { viewModel.incrementScoreB(2) },
-      scoreEnabled = uiState.isScoreEditable
+      scoreEnabled = uiState.isScoreEditable,
+      colors = CardDefaults.cardColors(
+        containerColor = tokens.secondaryCardContainer
+      ),
+      titleColor = tokens.secondaryCardTitle,
+      scoreColor = tokens.secondaryCardScore,
+      outlineButtonBorderColor = tokens.secondaryCardOutlineButtonBorder,
+      outlineButtonContentColor = tokens.secondaryCardOutlineButtonContent,
+      filledButtonContainerColor = tokens.secondaryCardFilledButtonContainer,
+      filledButtonContentColor = tokens.secondaryCardFilledButtonContent,
     )
 
     Spacer(modifier = Modifier.height(16.dp))
@@ -221,7 +260,13 @@ private fun TeamScoreLayoutCard(
   onPlus: () -> Unit,
   scoreEnabled: Boolean,
   colors: CardColors = CardDefaults.cardColors(),
-  isFirst: Boolean = false
+  titleColor: androidx.compose.ui.graphics.Color,
+  scoreColor: androidx.compose.ui.graphics.Color,
+  outlineButtonBorderColor: androidx.compose.ui.graphics.Color,
+  outlineButtonContentColor: androidx.compose.ui.graphics.Color,
+  filledButtonContainerColor: androidx.compose.ui.graphics.Color,
+  filledButtonContentColor: androidx.compose.ui.graphics.Color,
+  isPrimaryCard: Boolean = false,
 ) {
   Card(
     modifier = Modifier.fillMaxWidth(),
@@ -238,7 +283,7 @@ private fun TeamScoreLayoutCard(
         style = MaterialTheme.typography.titleLarge,
         fontWeight = FontWeight.Bold,
         maxLines = 1,
-        color = if (isFirst) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
+        color = titleColor,
       )
 
       Box(
@@ -254,8 +299,8 @@ private fun TeamScoreLayoutCard(
           fontSize = 88.sp,
           lineHeight = 88.sp,
           fontWeight = FontWeight.Black,
-          textAlign = if (isFirst) TextAlign.Right else TextAlign.Left,
-          color = if (isFirst) MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.onSurface
+          textAlign = if (isPrimaryCard) TextAlign.Right else TextAlign.Left,
+          color = scoreColor
         )
       }
       if (scoreEnabled) {
@@ -267,17 +312,14 @@ private fun TeamScoreLayoutCard(
               .weight(1f)
               .height(44.dp),
             shape = MaterialTheme.shapes.large,
-            border = if (isFirst)
-              BorderStroke(1.dp, MaterialTheme.colorScheme.onPrimary)
-            else
-              BorderStroke(1.dp, MaterialTheme.colorScheme.onSecondaryContainer)
+            border = BorderStroke(1.dp, outlineButtonBorderColor)
           ) {
             Text(
               text = "+1",
               fontSize = 24.sp,
               fontWeight = FontWeight.Bold,
               textAlign = TextAlign.Center,
-              color = if (isFirst) MaterialTheme.colorScheme.onSecondary else MaterialTheme.colorScheme.onSecondaryContainer
+              color = outlineButtonContentColor
             )
           }
           Spacer(modifier = Modifier.width(10.dp))
@@ -288,16 +330,10 @@ private fun TeamScoreLayoutCard(
               .weight(1f)
               .height(44.dp),
             shape = MaterialTheme.shapes.large,
-            colors = if (isFirst)
-              ButtonDefaults.buttonColors(
-                containerColor = MaterialTheme.colorScheme.onPrimary,
-                contentColor = MaterialTheme.colorScheme.primaryContainer
-              )
-            else
-              ButtonDefaults.buttonColors(
-                containerColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                contentColor = MaterialTheme.colorScheme.onPrimary
-              )
+            colors = ButtonDefaults.buttonColors(
+              containerColor = filledButtonContainerColor,
+              contentColor = filledButtonContentColor
+            )
           ) {
             Text(
               text = "+2",
